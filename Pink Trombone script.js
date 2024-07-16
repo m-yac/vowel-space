@@ -71,7 +71,6 @@ Math.gaussian = function()
     return (s-8)/4;
 }
 
-
 var backCanvas = document.getElementById("backCanvas");
 var backCtx = backCanvas.getContext("2d");
 var tractCanvas = document.getElementById("tractCanvas");
@@ -363,8 +362,8 @@ var UI =
         }
         if (UI.inInstructionsScreen)
         {
-            var x = (event.pageX-tractCanvas.offsetLeft)/UI.width*600;
-            var y = (event.pageY-tractCanvas.offsetTop)/UI.width*600;
+            var x = (event.pageX-UI.left_margin)/UI.width*600;
+            var y = (event.pageY-UI.top_margin)/UI.width*600;
             UI.instructionsScreenHandleTouch(x,y);
             return;
         }
@@ -375,10 +374,11 @@ var UI =
         touch.endTime = 0;
         touch.alive = true;
         touch.id = "mouse"+Math.random();
-        touch.x = (event.pageX-tractCanvas.offsetLeft)/UI.width*600;
-        touch.y = (event.pageY-tractCanvas.offsetTop)/UI.width*600;
+        touch.x = (event.pageX-UI.left_margin)/UI.width*600;
+        touch.y = (event.pageY-UI.top_margin)/UI.width*600;
         touch.index = TractUI.getIndex(touch.x, touch.y);
         touch.diameter = TractUI.getDiameter(touch.x, touch.y);
+        console.log(event.pageY, touch.y)
         UI.mouseTouch = touch;
         UI.touchesWithMouse.push(touch);   
         UI.buttonsHandleTouchStart(touch);
@@ -389,8 +389,8 @@ var UI =
     {
         var touch = UI.mouseTouch;
         if (!touch.alive) return;
-        touch.x = (event.pageX-tractCanvas.offsetLeft)/UI.width*600;
-        touch.y = (event.pageY-tractCanvas.offsetTop)/UI.width*600;
+        touch.x = (event.pageX-UI.left_margin)/UI.width*600;
+        touch.y = (event.pageY-UI.top_margin)/UI.width*600;
         touch.index = TractUI.getIndex(touch.x, touch.y);
         touch.diameter = TractUI.getDiameter(touch.x, touch.y); 
         UI.handleTouches();
@@ -452,6 +452,14 @@ var UI =
         document.body.style.marginTop = this.top_margin + "px";
         tractCanvas.style.width = this.width + "px";
         backCanvas.style.width = this.width + "px";  
+    },
+
+    getShapeFromScreen : function()
+    {
+        var rect = tractCanvas.getBoundingClientRect();
+        this.left_margin = rect.left;
+        this.top_margin = rect.top;
+        this.width = rect.width;        
     }
 }
 
@@ -584,6 +592,7 @@ var Glottis =
     init : function()
     {
         this.setupWaveform(0);
+        console.log(this);
         this.drawKeyboard();
     },
     
@@ -1693,7 +1702,7 @@ TractUI.init();
 requestAnimationFrame(redraw);
 function redraw(highResTimestamp)
 {
-    UI.shapeToFitScreen();
+    UI.getShapeFromScreen();
     TractUI.draw();
     UI.draw();
     requestAnimationFrame(redraw);
