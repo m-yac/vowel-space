@@ -3,19 +3,31 @@ body {
   background-color: lightgray;
 }
 
+.containers {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
 .canvas-container {
   position: relative;
-  margin: auto;
-  width: 500px;
-  height: 500px;
+  margin: 0;
   background-color: white;
+  flex-basis: 0;
+  max-width: 800px;
+  flex-grow: 1;
 }
 
 canvas {
-  position: absolute;
   background-color: transparent;
   margin: 0px;
   padding: 0px;
   width: 100%;
-  height: 100%;
+}
+
+.front-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
 }

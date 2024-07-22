@@ -9,6 +9,9 @@ by Neil Thapen
 venuspatrol.nfshost.com
 
 
+Modified by Matthew Yacavone, 2024
+
+
 Bibliography
 
 Julius O. Smith III, "Physical audio signal processing for virtual musical instruments and audio effects."
@@ -151,20 +154,20 @@ var UI =
         ctx.font="50px Arial";
         ctx.lineWidth = 3;
         ctx.textAlign = "center";
-        ctx.strokeText("P i n k   T r o m b o n e", 300, 230);
-        ctx.fillText("P i n k   T r o m b o n e", 300, 230);
+        // ctx.strokeText("P i n k   T r o m b o n e", 300, 230);
+        // ctx.fillText("P i n k   T r o m b o n e", 300, 230);
         
         ctx.font="28px Arial";
-        ctx.fillText("bare-handed  speech synthesis", 300, 330);
+        // ctx.fillText("bare-handed  speech synthesis", 300, 330);
 
         ctx.font="20px Arial";        
         //ctx.fillText("(tap to start)", 300, 380);   
 
-        if (isFirefox) 
-        {
-            ctx.font="20px Arial";        
-            ctx.fillText("(sorry - may work poorly with the Firefox browser)", 300, 430);  
-        }
+        // if (isFirefox) 
+        // {
+        //     ctx.font="20px Arial";        
+        //     ctx.fillText("(sorry - may work poorly with the Firefox browser)", 300, 430);  
+        // }
     },
 
     
@@ -378,7 +381,6 @@ var UI =
         touch.y = (event.pageY-UI.top_margin)/UI.width*600;
         touch.index = TractUI.getIndex(touch.x, touch.y);
         touch.diameter = TractUI.getDiameter(touch.x, touch.y);
-        console.log(event.pageY, touch.y)
         UI.mouseTouch = touch;
         UI.touchesWithMouse.push(touch);   
         UI.buttonsHandleTouchStart(touch);
@@ -471,6 +473,9 @@ var AudioSystem =
     started : false,
     soundOn : false,
 
+    peaksAnalyzed: 0,
+    analysisBuffer: [],
+
     init : function ()
     {
         window.AudioContext = window.AudioContext||window.webkitAudioContext;
@@ -542,6 +547,21 @@ var AudioSystem =
             Tract.runStep(glottalOutput, inputArray2[j], lambda2);
             vocalOutput += Tract.lipOutput + Tract.noseOutput;
             outArray[j] = vocalOutput * 0.125;
+
+            var newPeak = Glottis.peaksGenerated > AudioSystem.peaksAnalyzed;
+            if (newPeak) {
+                AudioSystem.peaksAnalyzed = Glottis.peaksGenerated;
+            }
+
+            // Continue pushing output to analysisBuffer, or if there's been a
+            // new peak, start pushing output to analysisBuffer
+            if (AudioSystem.analysisBuffer.length > 0 || newPeak) {
+                AudioSystem.analysisBuffer.push(outArray[j]);
+            }
+            if (AudioSystem.analysisBuffer.length == Analysis.M) {
+                requestAnimationFrame(Analysis.draw.bind(Analysis, [...AudioSystem.analysisBuffer]));
+                AudioSystem.analysisBuffer = [];
+            }
         }
         Glottis.finishBlock();
         Tract.finishBlock();
@@ -589,10 +609,11 @@ var Glottis =
     marks : [0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0],
     baseNote : 87.3071, //F
     
+    peaksGenerated: 0,
+
     init : function()
     {
         this.setupWaveform(0);
-        console.log(this);
         this.drawKeyboard();
     },
     
@@ -731,6 +752,7 @@ var Glottis =
         {
             this.timeInWaveform -= this.waveformLength;
             this.setupWaveform(lambda);
+            this.peaksGenerated += 1;
         }
         var out = this.normalizedLFWaveform(this.timeInWaveform/this.waveformLength);
         var aspiration = this.intensity*(1-Math.sqrt(this.UITenseness))*this.getNoiseModulator()*noiseSource;
@@ -749,13 +771,13 @@ var Glottis =
     finishBlock : function()
     {
         var vibrato = 0;
-        vibrato += this.vibratoAmount * Math.sin(2*Math.PI * this.totalTime *this.vibratoFrequency);          
-        vibrato += 0.02 * noise.simplex1(this.totalTime * 4.07);
-        vibrato += 0.04 * noise.simplex1(this.totalTime * 2.15);
         if (autoWobble)
         {
-            vibrato += 0.2 * noise.simplex1(this.totalTime * 0.98);
-            vibrato += 0.4 * noise.simplex1(this.totalTime * 0.5);
+            vibrato += 0.01 * this.vibratoAmount * Math.sin(2*Math.PI * this.totalTime *this.vibratoFrequency);          
+            vibrato += 0.2 * this.vibratoAmount * noise.simplex1(this.totalTime * 4.07);
+            vibrato += 0.4 * this.vibratoAmount * noise.simplex1(this.totalTime * 2.15);
+            // vibrato += 0.2 * noise.simplex1(this.totalTime * 0.98);
+            // vibrato += 0.4 * noise.simplex1(this.totalTime * 0.5);
         }
         if (this.UIFrequency>this.smoothFrequency) 
             this.smoothFrequency = Math.min(this.smoothFrequency * 1.1, this.UIFrequency);
@@ -765,7 +787,7 @@ var Glottis =
         this.newFrequency = this.smoothFrequency * (1+vibrato);
         this.oldTenseness = this.newTenseness;
         this.newTenseness = this.UITenseness
-            + 0.1*noise.simplex1(this.totalTime*0.46)+0.05*noise.simplex1(this.totalTime*0.36);
+            // + 0.1*noise.simplex1(this.totalTime*0.46)+0.05*noise.simplex1(this.totalTime*0.36);
         if (!this.isTouched && alwaysVoice) this.newTenseness += (3-this.UITenseness)*(1-this.intensity);
         
         if (this.isTouched || alwaysVoice) this.intensity += 0.13;
@@ -978,81 +1000,82 @@ var Tract =
         }
     },
     
-    runStep : function(glottalOutput, turbulenceNoise, lambda)
+    runStep : function(glottalOutput, turbulenceNoise, lambda, model)
     {
+        if (!model) { model = this; }
+
         var updateAmplitudes = (Math.random()<0.1);
     
         //mouth
-        this.processTransients();
-        this.addTurbulenceNoise(turbulenceNoise);
+        this.processTransients(model);
+        this.addTurbulenceNoise(turbulenceNoise, model);
         
         //this.glottalReflection = -0.8 + 1.6 * Glottis.newTenseness;
-        this.junctionOutputR[0] = this.L[0] * this.glottalReflection + glottalOutput;
-        this.junctionOutputL[this.n] = this.R[this.n-1] * this.lipReflection; 
+        model.junctionOutputR[0] = model.L[0] * this.glottalReflection + glottalOutput;
+        model.junctionOutputL[this.n] = model.R[this.n-1] * this.lipReflection;
         
         for (var i=1; i<this.n; i++)
         {
             var r = this.reflection[i] * (1-lambda) + this.newReflection[i]*lambda;
-            var w = r * (this.R[i-1] + this.L[i]);
-            this.junctionOutputR[i] = this.R[i-1] - w;
-            this.junctionOutputL[i] = this.L[i] + w;
+            var w = r * (model.R[i-1] + model.L[i]);
+            model.junctionOutputR[i] = model.R[i-1] - w;
+            model.junctionOutputL[i] = model.L[i] + w;
         }    
         
         //now at junction with nose
         var i = this.noseStart;
         var r = this.newReflectionLeft * (1-lambda) + this.reflectionLeft*lambda;
-        this.junctionOutputL[i] = r*this.R[i-1]+(1+r)*(this.noseL[0]+this.L[i]);
+        model.junctionOutputL[i] = r*model.R[i-1]+(1+r)*(model.noseL[0]+model.L[i]);
         r = this.newReflectionRight * (1-lambda) + this.reflectionRight*lambda;
-        this.junctionOutputR[i] = r*this.L[i]+(1+r)*(this.R[i-1]+this.noseL[0]);     
+        model.junctionOutputR[i] = r*model.L[i]+(1+r)*(model.R[i-1]+model.noseL[0]);     
         r = this.newReflectionNose * (1-lambda) + this.reflectionNose*lambda;
-        this.noseJunctionOutputR[0] = r*this.noseL[0]+(1+r)*(this.L[i]+this.R[i-1]);
+        model.noseJunctionOutputR[0] = r*model.noseL[0]+(1+r)*(model.L[i]+model.R[i-1]);
          
         for (var i=0; i<this.n; i++)
         {          
-            this.R[i] = this.junctionOutputR[i]*0.999;
-            this.L[i] = this.junctionOutputL[i+1]*0.999; 
+            model.R[i] = model.junctionOutputR[i]*0.999;
+            model.L[i] = model.junctionOutputL[i+1]*0.999;
             
-            //this.R[i] = Math.clamp(this.junctionOutputR[i] * this.fade, -1, 1);
-            //this.L[i] = Math.clamp(this.junctionOutputL[i+1] * this.fade, -1, 1);    
+            //model.R[i] = Math.clamp(model.junctionOutputR[i] * this.fade, -1, 1);
+            //model.L[i] = Math.clamp(model.junctionOutputL[i+1] * this.fade, -1, 1);    
             
             if (updateAmplitudes)
             {   
-                var amplitude = Math.abs(this.R[i]+this.L[i]);
-                if (amplitude > this.maxAmplitude[i]) this.maxAmplitude[i] = amplitude;
-                else this.maxAmplitude[i] *= 0.999;
+                var amplitude = Math.abs(model.R[i]+model.L[i]);
+                if (amplitude > model.maxAmplitude[i]) model.maxAmplitude[i] = amplitude;
+                else model.maxAmplitude[i] *= 0.999;
             }
         }
 
-        this.lipOutput = this.R[this.n-1];
+        model.lipOutput = model.R[this.n-1];
         
         //nose     
-        this.noseJunctionOutputL[this.noseLength] = this.noseR[this.noseLength-1] * this.lipReflection; 
+        model.noseJunctionOutputL[this.noseLength] = model.noseR[this.noseLength-1] * this.lipReflection; 
         
         for (var i=1; i<this.noseLength; i++)
         {
-            var w = this.noseReflection[i] * (this.noseR[i-1] + this.noseL[i]);
-            this.noseJunctionOutputR[i] = this.noseR[i-1] - w;
-            this.noseJunctionOutputL[i] = this.noseL[i] + w;
+            var w = this.noseReflection[i] * (model.noseR[i-1] + model.noseL[i]);
+            model.noseJunctionOutputR[i] = model.noseR[i-1] - w;
+            model.noseJunctionOutputL[i] = model.noseL[i] + w;
         }
         
         for (var i=0; i<this.noseLength; i++)
         {
-            this.noseR[i] = this.noseJunctionOutputR[i] * this.fade;
-            this.noseL[i] = this.noseJunctionOutputL[i+1] * this.fade;   
+            model.noseR[i] = model.noseJunctionOutputR[i] * this.fade;
+            model.noseL[i] = model.noseJunctionOutputL[i+1] * this.fade;   
             
-            //this.noseR[i] = Math.clamp(this.noseJunctionOutputR[i] * this.fade, -1, 1);
-            //this.noseL[i] = Math.clamp(this.noseJunctionOutputL[i+1] * this.fade, -1, 1);    
+            //model.noseR[i] = Math.clamp(model.noseJunctionOutputR[i] * this.fade, -1, 1);
+            //model.noseL[i] = Math.clamp(model.noseJunctionOutputL[i+1] * this.fade, -1, 1);    
             
             if (updateAmplitudes)
             {
-                var amplitude = Math.abs(this.noseR[i]+this.noseL[i]);
-                if (amplitude > this.noseMaxAmplitude[i]) this.noseMaxAmplitude[i] = amplitude;
-                else this.noseMaxAmplitude[i] *= 0.999;
+                var amplitude = Math.abs(model.noseR[i]+model.noseL[i]);
+                if (amplitude > model.noseMaxAmplitude[i]) model.noseMaxAmplitude[i] = amplitude;
+                else model.noseMaxAmplitude[i] *= 0.999;
             }
         }
 
-        this.noseOutput = this.noseR[this.noseLength-1];
-       
+        model.noseOutput = model.noseR[this.noseLength-1];
     },
     
     finishBlock : function()
@@ -1072,28 +1095,30 @@ var Tract =
         this.transients.push(trans);
     },
     
-    processTransients : function()
+    processTransients : function(model)
     {
-        for (var i = 0; i < this.transients.length; i++)  
+        if (!model) { model = this; }
+        for (var i = 0; i < model.transients.length; i++)  
         {
-            var trans = this.transients[i];
+            var trans = model.transients[i];
             var amplitude = trans.strength * Math.pow(2, -trans.exponent * trans.timeAlive);
-            this.R[trans.position] += amplitude/2;
-            this.L[trans.position] += amplitude/2;
+            model.R[trans.position] += amplitude/2;
+            model.L[trans.position] += amplitude/2;
             trans.timeAlive += 1.0/(sampleRate*2);
         }
-        for (var i=this.transients.length-1; i>=0; i--)
+        for (var i=model.transients.length-1; i>=0; i--)
         {
-            var trans = this.transients[i];
+            var trans = model.transients[i];
             if (trans.timeAlive > trans.lifeTime)
             {
-                this.transients.splice(i,1);
+                model.transients.splice(i,1);
             }
         }
     },
     
-    addTurbulenceNoise : function(turbulenceNoise)
+    addTurbulenceNoise : function(turbulenceNoise, model)
     {
+        if (!model) { model = this; }
         for (var j=0; j<UI.touchesWithMouse.length; j++)
         {
             var touch = UI.touchesWithMouse[j];
@@ -1101,12 +1126,13 @@ var Tract =
             if (touch.diameter<=0) continue;            
             var intensity = touch.fricative_intensity;
             if (intensity == 0) continue;
-            this.addTurbulenceNoiseAtIndex(0.66*turbulenceNoise*intensity, touch.index, touch.diameter);
+            this.addTurbulenceNoiseAtIndex(0.66*turbulenceNoise*intensity, touch.index, touch.diameter, model);
         }
     },
     
-    addTurbulenceNoiseAtIndex : function(turbulenceNoise, index, diameter)
+    addTurbulenceNoiseAtIndex : function(turbulenceNoise, index, diameter, model)
     {   
+        if (!model) { model = this; }
         var i = Math.floor(index);
         var delta = index - i;
         turbulenceNoise *= Glottis.getNoiseModulator();
@@ -1114,10 +1140,10 @@ var Tract =
         var openness = Math.clamp(30*(diameter-0.3), 0, 1);
         var noise0 = turbulenceNoise*(1-delta)*thinness0*openness;
         var noise1 = turbulenceNoise*delta*thinness0*openness;
-        this.R[i+1] += noise0/2;
-        this.L[i+1] += noise0/2;
-        this.R[i+2] += noise1/2;
-        this.L[i+2] += noise1/2;
+        model.R[i+1] += noise0/2;
+        model.L[i+1] += noise0/2;
+        model.R[i+2] += noise1/2;
+        model.L[i+2] += noise1/2;
     }
 };
 
@@ -1157,7 +1183,7 @@ var TractUI =
     moveTo : function(i,d) 
     {
         var angle = this.angleOffset + i * this.angleScale * Math.PI / (Tract.lipStart-1);
-        var wobble = (Tract.maxAmplitude[Tract.n-1]+Tract.noseMaxAmplitude[Tract.noseLength-1]);
+        var wobble = 0;//(Tract.maxAmplitude[Tract.n-1]+Tract.noseMaxAmplitude[Tract.noseLength-1]);
         wobble *= 0.03*Math.sin(2*i-50*time)*i/Tract.n;
         angle += wobble;        
         var r = this.radius - this.scale*d + 100*wobble;
@@ -1167,7 +1193,7 @@ var TractUI =
     lineTo : function(i,d) 
     {
         var angle = this.angleOffset + i * this.angleScale * Math.PI / (Tract.lipStart-1);
-        var wobble = (Tract.maxAmplitude[Tract.n-1]+Tract.noseMaxAmplitude[Tract.noseLength-1]);
+        var wobble = 0;//(Tract.maxAmplitude[Tract.n-1]+Tract.noseMaxAmplitude[Tract.noseLength-1]);
         wobble *= 0.03*Math.sin(2*i-50*time)*i/Tract.n;
         angle += wobble;       
         var r = this.radius - this.scale*d + 100*wobble;
@@ -1330,7 +1356,7 @@ var TractUI =
         this.ctx.fillStyle = "black";
         this.ctx.textAlign = "left";
         this.ctx.fillText(UI.debugText, 20, 20);
-        //this.drawPositions();
+        this.drawPositions();
     },
     
     drawBackground : function()
@@ -1690,8 +1716,6 @@ function makeButton(x, y, width, height, text, switchedOn)
     return button;
 }
 
-
-document.body.style.cursor = 'pointer';
 
 AudioSystem.init();
 UI.init();
