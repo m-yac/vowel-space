@@ -107,29 +107,31 @@ var UI =
         this.mouseTouch = {alive: false, endTime: 0};
         this.mouseDown = false;
         
-        this.aboutButton = makeButton(460, 392, 140, 30, "about...", true);         
-        this.alwaysVoiceButton = makeButton(460, 428, 140, 30, "always voice", true);
-        this.autoWobbleButton = makeButton(460, 464, 140, 30, "pitch wobble", true); 
+        // this.aboutButton = null;makeButton(600-460, 392, 140, 30, "about...", true);         
+        this.alwaysVoiceButton = makeButton(600-460, 428, 140, 30, "always voice", true);
+        this.autoWobbleButton = makeButton(600-460, 464, 140, 30, "pitch wobble", true); 
 
         tractCanvas.addEventListener('touchstart', UI.startTouches);
         tractCanvas.addEventListener('touchmove', UI.moveTouches);
         tractCanvas.addEventListener('touchend', UI.endTouches);     
         tractCanvas.addEventListener('touchcancel', UI.endTouches);  
         
-        document.addEventListener('touchstart', (function(event) {event.preventDefault();}) );
+        tractCanvas.addEventListener('touchstart', (function(event) {event.preventDefault();}) );
         
-        document.addEventListener('mousedown', (function(event)
+        tractCanvas.addEventListener('mousedown', (function(event)
             {UI.mouseDown = true; event.preventDefault(); UI.startMouse(event);}));
-        document.addEventListener('mouseup', (function(event)
+        tractCanvas.addEventListener('mouseup', (function(event)
             {UI.mouseDown = false; UI.endMouse(event);}));
-        document.addEventListener('mousemove', UI.moveMouse);      
+        tractCanvas.addEventListener('mouseleave', (function(event)
+            {UI.mouseDown = false; UI.endMouse(event);}));
+        tractCanvas.addEventListener('mousemove', UI.moveMouse);      
     },
     
     draw : function()
     {
         this.alwaysVoiceButton.draw(tractCtx);
         this.autoWobbleButton.draw(tractCtx);
-        this.aboutButton.draw(tractCtx);
+        // this.aboutButton.draw(tractCtx);
         if (this.inAboutScreen) this.drawAboutScreen();
         else if (this.inInstructionsScreen) this.drawInstructionsScreen();
     },
@@ -253,7 +255,7 @@ var UI =
         alwaysVoice = this.alwaysVoiceButton.switchedOn;
         this.autoWobbleButton.handleTouchStart(touch);
         autoWobble = this.autoWobbleButton.switchedOn;
-        this.aboutButton.handleTouchStart(touch);
+        // this.aboutButton.handleTouchStart(touch);
 
     },
     
@@ -277,7 +279,7 @@ var UI =
             var touches = event.changedTouches;
             for (var j=0; j<touches.length; j++)        
             {
-                var x = (touches[j].pageX-UI.left_margin)/UI.width*600;
+                var x = (1-(touches[j].pageX-UI.left_margin)/UI.width)*600;
                 var y = (touches[j].pageY-UI.top_margin)/UI.width*600;
             }
             UI.instructionsScreenHandleTouch(x,y);
@@ -345,10 +347,10 @@ var UI =
         }   
         UI.handleTouches();
         
-        if (!UI.aboutButton.switchedOn) 
-        {
-            UI.inInstructionsScreen = true;
-        }
+        // if (!UI.aboutButton.switchedOn) 
+        // {
+        //     UI.inInstructionsScreen = true;
+        // }
     },
       
     startMouse : function(event)
@@ -406,7 +408,7 @@ var UI =
         touch.endTime = time; 
         UI.handleTouches();
         
-        if (!UI.aboutButton.switchedOn) UI.inInstructionsScreen = true;  
+        // if (!UI.aboutButton.switchedOn) UI.inInstructionsScreen = true;  
     },
     
     handleTouches : function(event)
@@ -598,7 +600,7 @@ var Glottis =
     isTouched : false,
     ctx : backCtx,
     touch : 0,
-    x : 240,
+    x : 600-240,
     y : 530,
     
     keyboardTop : 500,
@@ -1150,7 +1152,7 @@ var Tract =
 
 var TractUI =
 {
-    originX : 340, 
+    originX : 600-340, 
     originY : 449, 
     radius : 298, 
     scale : 60,
@@ -1158,7 +1160,11 @@ var TractUI =
     tongueDiameter : 2.43,
     innerTongueControlRadius : 2.05,
     outerTongueControlRadius : 3.5,
+    lipDiameter: 2,
+    innerLipControlRadius : 0.5,
+    outerLipControlRadius : 2,
     tongueTouch : 0,
+    lipTouch : 0,
     angleScale : 0.64,
     angleOffset : -0.24,
     noseOffset : 0.8,
@@ -1169,6 +1175,8 @@ var TractUI =
     init : function()
     {
         this.ctx = tractCtx;
+        this.lipIndex = (Tract.n + Tract.lipStart) / 2;
+        this.lipConst = 4 / ((Tract.n - Tract.lipStart + 2) * (Tract.n - Tract.lipStart + 2));
         this.setRestDiameter();
         for (var i=0; i<Tract.n; i++) 
         {
@@ -1187,7 +1195,7 @@ var TractUI =
         wobble *= 0.03*Math.sin(2*i-50*time)*i/Tract.n;
         angle += wobble;        
         var r = this.radius - this.scale*d + 100*wobble;
-        this.ctx.moveTo(this.originX-r*Math.cos(angle), this.originY-r*Math.sin(angle));
+        this.ctx.moveTo(this.originX+r*Math.cos(angle), this.originY-r*Math.sin(angle));
     },
     
     lineTo : function(i,d) 
@@ -1197,7 +1205,7 @@ var TractUI =
         wobble *= 0.03*Math.sin(2*i-50*time)*i/Tract.n;
         angle += wobble;       
         var r = this.radius - this.scale*d + 100*wobble;
-        this.ctx.lineTo(this.originX-r*Math.cos(angle), this.originY-r*Math.sin(angle));
+        this.ctx.lineTo(this.originX+r*Math.cos(angle), this.originY-r*Math.sin(angle));
     },
     
     drawText : function(i,d,text)
@@ -1205,8 +1213,8 @@ var TractUI =
         var angle = this.angleOffset + i * this.angleScale * Math.PI / (Tract.lipStart-1);
         var r = this.radius - this.scale*d; 
         this.ctx.save();
-        this.ctx.translate(this.originX-r*Math.cos(angle), this.originY-r*Math.sin(angle)+2); //+8);
-        this.ctx.rotate(angle-Math.PI/2);
+        this.ctx.translate(this.originX+r*Math.cos(angle), this.originY-r*Math.sin(angle)+2); //+8);
+        this.ctx.rotate(-angle+Math.PI/2);
         this.ctx.fillText(text, 0, 0);
         this.ctx.restore();
     },
@@ -1216,7 +1224,7 @@ var TractUI =
         var angle = this.angleOffset + i * this.angleScale * Math.PI / (Tract.lipStart-1);
         var r = this.radius - this.scale*d; 
         this.ctx.save();
-        this.ctx.translate(this.originX-r*Math.cos(angle), this.originY-r*Math.sin(angle)+2); //+8);
+        this.ctx.translate(this.originX+r*Math.cos(angle), this.originY-r*Math.sin(angle)+2); //+8);
         //this.ctx.rotate(angle-Math.PI/2);
         this.ctx.fillText(text, 0, 0);
         this.ctx.restore();
@@ -1227,20 +1235,20 @@ var TractUI =
         var angle = this.angleOffset + i * this.angleScale * Math.PI / (Tract.lipStart-1);
         var r = this.radius - this.scale*d; 
         this.ctx.beginPath();
-        this.ctx.arc(this.originX-r*Math.cos(angle), this.originY-r*Math.sin(angle), radius, 0, 2*Math.PI);
+        this.ctx.arc(this.originX+r*Math.cos(angle), this.originY-r*Math.sin(angle), radius, 0, 2*Math.PI);
         this.ctx.fill();
     },
         
     getIndex : function(x,y)
     {
-        var xx = x-this.originX; var yy = y-this.originY;
+        var xx = this.originX-x; var yy = y-this.originY;
         var angle = Math.atan2(yy, xx);
         while (angle> 0) angle -= 2*Math.PI;
         return (Math.PI + angle - this.angleOffset)*(Tract.lipStart-1) / (this.angleScale*Math.PI);
     },
     getDiameter : function(x,y)
     {
-        var xx = x-this.originX; var yy = y-this.originY;
+        var xx = this.originX-x; var yy = y-this.originY;
         return (this.radius-Math.sqrt(xx*xx + yy*yy))/this.scale;
     },
     
@@ -1251,6 +1259,7 @@ var TractUI =
         this.ctx.lineJoin = 'round';  
         
         this.drawTongueControl();
+        this.drawLipControl();
         this.drawPitchControl();
         
         var velum = Tract.noseDiameter[0];
@@ -1304,8 +1313,8 @@ var TractUI =
         this.drawText(Tract.n*0.71, -1.8, "nasal");
         this.drawText(Tract.n*0.71, -1.3, "cavity");
         this.ctx.font="22px Arial";        
-        this.drawText(Tract.n*0.6, 0.9, "oral");    
-        this.drawText(Tract.n*0.7, 0.9, "cavity");        
+        this.drawText(Tract.n*0.75, 0.9, "oral");    
+        this.drawText(Tract.n*0.65, 0.9, "cavity");        
   
        
         this.drawAmplitudes(); 
@@ -1344,19 +1353,12 @@ var TractUI =
         this.moveTo(Tract.noseStart+velumAngle-2, 0);
         this.lineTo(Tract.noseStart+velumAngle, -this.noseOffset);  
         this.ctx.stroke();
-
-        
-        this.ctx.fillStyle = "orchid";
-        this.ctx.font="20px Arial";
-        this.ctx.textAlign = "center";
-        this.ctx.globalAlpha = 0.7;
-        this.drawText(Tract.n*0.95, 0.8+0.8*Tract.diameter[Tract.n-1], " lip"); 
         
         this.ctx.globalAlpha=1.0;        
         this.ctx.fillStyle = "black";
-        this.ctx.textAlign = "left";
+        this.ctx.textAlign = "right";
         this.ctx.fillText(UI.debugText, 20, 20);
-        this.drawPositions();
+        // this.drawPositions();
     },
     
     drawBackground : function()
@@ -1369,19 +1371,21 @@ var TractUI =
         this.ctx.font="20px Arial";
         this.ctx.textAlign = "center";
         this.ctx.globalAlpha = 0.7;
-        this.drawText(Tract.n*0.44, -0.28, "soft");
-        this.drawText(Tract.n*0.51, -0.28, "palate");
-        this.drawText(Tract.n*0.77, -0.28, "hard");
-        this.drawText(Tract.n*0.84, -0.28, "palate");
-        this.drawText(Tract.n*0.95, -0.28, " lip");
+        this.drawText(Tract.n*0.54, -0.28, "soft");
+        this.drawText(Tract.n*0.47, -0.28, "palate");
+        this.drawText(Tract.n*0.87, -0.29, "hard");
+        this.drawText(Tract.n*0.80, -0.28, "palate");
+        this.drawText(Tract.n*0.95, -0.28, "lip ");
         
         this.ctx.font="17px Arial";        
-        this.drawTextStraight(Tract.n*0.18, 3, "  tongue control");   
-        this.ctx.textAlign = "left";
+        this.drawTextStraight(Tract.n*0.18, 3, "tongue control  ");   
+        this.drawText(this.lipIndex, 0.65 + this.outerLipControlRadius, "lip"); 
+        this.drawText(this.lipIndex, 0.95 + this.outerLipControlRadius, "control"); 
+        this.ctx.textAlign = "right";
         this.drawText(Tract.n*1.03, -1.07, "nasals");
         this.drawText(Tract.n*1.03, -0.28, "stops");
         this.drawText(Tract.n*1.03, 0.51, "fricatives");
-        //this.drawTextStraight(1.5, +0.8, "glottis")
+        // this.drawTextStraight(1.5, +0.8, "glottis")
         this.ctx.strokeStyle = "orchid";
         this.ctx.lineWidth = 2;
         this.ctx.beginPath();
@@ -1397,7 +1401,7 @@ var TractUI =
     {
         this.ctx.fillStyle = "orchid";
         this.ctx.font="24px Arial";
-        this.ctx.textAlign = "center";
+        this.ctx.textAlign = "right";
         this.ctx.globalAlpha = 0.6;
         var a = 2;
         var b = 1.5;
@@ -1517,7 +1521,7 @@ var TractUI =
         //circle for tongue position
         var angle = this.angleOffset + this.tongueIndex * this.angleScale * Math.PI / (Tract.lipStart-1);
         var r = this.radius - this.scale*(this.tongueDiameter);
-        var x = this.originX-r*Math.cos(angle);
+        var x = this.originX+r*Math.cos(angle);
         var y = this.originY-r*Math.sin(angle);
         this.ctx.lineWidth = 4;
         this.ctx.strokeStyle = "orchid";
@@ -1531,6 +1535,53 @@ var TractUI =
         
         this.ctx.fillStyle = "orchid";
      },
+
+    drawLipControl: function()
+    {
+        this.ctx.lineCap = "round";
+        this.ctx.lineJoin = "round";
+        this.ctx.strokeStyle = palePink;
+        this.ctx.fillStyle = palePink;
+        this.ctx.globalAlpha = 1.0;
+        this.ctx.beginPath();
+        this.ctx.lineWidth = 45;
+        
+        //outline
+        this.moveTo(this.lipIndex, this.innerLipControlRadius);
+        this.lineTo(this.lipIndex, this.outerLipControlRadius);
+        this.ctx.closePath();
+        this.ctx.stroke();
+        this.ctx.fill();
+        
+        var a = this.innerLipControlRadius;
+        var c = this.outerLipControlRadius;
+        var b = 0.5*(a+c);
+        var r = 3;
+        this.ctx.fillStyle = "orchid";
+        this.ctx.globalAlpha = 0.3;        
+        this.drawCircle(this.lipIndex, a, r);
+        this.drawCircle(this.lipIndex, b, r);
+        this.drawCircle(this.lipIndex, c, r);
+        
+        this.ctx.globalAlpha = 1.0;       
+
+        //circle for lip position
+        var angle = this.angleOffset + this.lipIndex * this.angleScale * Math.PI / (Tract.lipStart-1);
+        var r = this.radius - this.scale*(this.lipDiameter);
+        var x = this.originX+r*Math.cos(angle);
+        var y = this.originY-r*Math.sin(angle);
+        this.ctx.lineWidth = 4;
+        this.ctx.strokeStyle = "orchid";
+        this.ctx.globalAlpha = 0.7;
+        this.ctx.beginPath();
+        this.ctx.arc(x,y, 18, 0, 2*Math.PI);
+        this.ctx.stroke();        
+        this.ctx.globalAlpha = 0.15;
+        this.ctx.fill();
+        this.ctx.globalAlpha = 1.0;
+        
+        this.ctx.fillStyle = "orchid";
+    },
     
     drawPitchControl : function()
     {
@@ -1542,10 +1593,10 @@ var TractUI =
             this.ctx.strokeStyle = "orchid";
             this.ctx.globalAlpha = 0.7;
             this.ctx.beginPath();
-            this.ctx.moveTo(Glottis.x-w, Glottis.y-h);
-            this.ctx.lineTo(Glottis.x+w, Glottis.y-h);
-            this.ctx.lineTo(Glottis.x+w, Glottis.y+h);
-            this.ctx.lineTo(Glottis.x-w, Glottis.y+h);                    
+            this.ctx.moveTo(Glottis.x+w, Glottis.y-h);
+            this.ctx.lineTo(Glottis.x-w, Glottis.y-h);
+            this.ctx.lineTo(Glottis.x-w, Glottis.y+h);
+            this.ctx.lineTo(Glottis.x+w, Glottis.y+h);                    
             this.ctx.closePath();            
             this.ctx.stroke();    
             this.ctx.globalAlpha = 0.15;
@@ -1565,13 +1616,17 @@ var TractUI =
             if (i == Tract.bladeStart || i == Tract.lipStart-2) curve *= 0.94;               
             Tract.restDiameter[i] = 1.5 - curve;
         }
+        for (var i =Tract.lipStart; i<Tract.n; i++) {
+            Tract.restDiameter[i] = 1.5 - this.lipConst * (this.lipDiameter - 2) * (Tract.n + 1 - i) * (Tract.lipStart - 1 - i);
+        }
     },
     
     handleTouches : function()
     {           
         if (this.tongueTouch != 0 && !this.tongueTouch.alive) this.tongueTouch = 0;
+        if (this.lipTouch != 0 && !this.lipTouch.alive) this.lipTouch = 0;
         
-        if (this.tongueTouch == 0)
+        if (this.tongueTouch == 0 || this.lipTouch == 0)
         {        
             for (var j=0; j<UI.touchesWithMouse.length; j++)  
             {
@@ -1586,6 +1641,11 @@ var TractUI =
                     && diameter >= this.innerTongueControlRadius-0.5 && diameter <= this.outerTongueControlRadius+0.5)
                 {
                     this.tongueTouch = touch;
+                }
+                if (index >= Tract.lipStart && index <= Tract.n
+                    && diameter >= this.innerLipControlRadius-0.5 && diameter <= this.outerLipControlRadius+0.5)
+                {
+                    this.lipTouch = touch;
                 }
             }    
         }
@@ -1603,6 +1663,14 @@ var TractUI =
             //this.tongueIndex = Math.clamp(index, this.tongueLowerIndexBound, this.tongueUpperIndexBound);
             var out = fromPoint*0.5*(this.tongueUpperIndexBound-this.tongueLowerIndexBound);
             this.tongueIndex = Math.clamp(index, this.tongueIndexCentre-out, this.tongueIndexCentre+out);
+        }
+
+        if (this.lipTouch != 0)
+        {
+            var x = this.lipTouch.x;
+            var y = this.lipTouch.y;        
+            var diameter = TractUI.getDiameter(x,y);
+            this.lipDiameter = Math.clamp(diameter, this.innerLipControlRadius, this.outerLipControlRadius);
         }
         
         this.setRestDiameter();   
@@ -1676,10 +1744,10 @@ function makeButton(x, y, width, height, text, switchedOn)
         ctx.lineWidth = 2*radius;     
         
         ctx.beginPath();
-        ctx.moveTo(this.x+radius, this.y+radius);
-        ctx.lineTo(this.x+this.width-radius, this.y+radius);
-        ctx.lineTo(this.x+this.width-radius, this.y+this.height-radius);
-        ctx.lineTo(this.x+radius, this.y+this.height-radius);
+        ctx.lineTo(this.x-this.width+radius, this.y+this.height-radius);
+        ctx.lineTo(this.x-radius, this.y+this.height-radius);
+        ctx.moveTo(this.x-radius, this.y+radius);
+        ctx.lineTo(this.x-this.width+radius, this.y+radius);
         ctx.closePath();
         ctx.stroke();
         ctx.fill();
@@ -1701,12 +1769,12 @@ function makeButton(x, y, width, height, text, switchedOn)
     
     button.drawText = function(ctx)
     {
-        ctx.fillText(this.text, this.x+this.width/2, this.y+this.height/2+6);
+        ctx.fillText(this.text, this.x-this.width/2, this.y+this.height/2+6);
     };
     
     button.handleTouchStart = function(touch)
     {
-        if (touch.x>=this.x && touch.x <= this.x + this.width  
+        if (touch.x <= this.x && touch.x >= this.x - this.width  
             && touch.y >= this.y && touch.y <= this.y + this.height)
         {
             this.switchedOn = !this.switchedOn;

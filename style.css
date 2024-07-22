@@ -14,7 +14,7 @@ body {
   margin: 0;
   background-color: white;
   flex-basis: 0;
-  max-width: 800px;
+  max-width: 600px;
   flex-grow: 1;
 }
 
