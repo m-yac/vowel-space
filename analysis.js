@@ -63,6 +63,8 @@ var amplCanvas = document.getElementById("amplCanvas");
 var amplCtx = amplCanvas.getContext("2d");
 var filtCanvas = document.getElementById("filtCanvas");
 var filtCtx = filtCanvas.getContext("2d");
+var spaceCanvas = document.getElementById("spaceCanvas");
+var spaceCtx = spaceCanvas.getContext("2d");
 
 // A duplicate of Tract.init, but only including variables which change after
 // each call to Tract.runStep
@@ -99,29 +101,32 @@ TractModel.prototype.runAnalysisStep = function runAnalysisStep(glottalOutput, j
     return vocalOutput * 0.125;
 }
 
-// Port of scypy's _local_maxima_1d (the implementation of find_peaks)
-// Source: https://github.com/scipy/scipy/blob/87c46641a8b3b5b47b81de44c07b840468f7ebe7/scipy/signal/_peak_finding_utils.pyx#L20
-function find_peaks(x) {
-    let maxima = [];
-    for (let i = 1; i < x.length - 1; i += 1) {
-        // Test if previous sample is smaller
-        if (x[i - 1] < x[i] && x[i] > 0.1) {
-            let i_ahead = i + 1; // Index to look ahead of current sample
-
-            // Find next sample that is unequal to x[i]
-            while (i_ahead < x.length - 1 && Math.abs(x[i_ahead] - x[i]) < 1e-7) {
-                i_ahead += 1;
-            }
-
-            // Maxima is found if next unequal sample is smaller than x[i]
-            if (x[i_ahead] < x[i]) {
-                maxima.push(Math.floor((i + i_ahead - 1) / 2));
-                // Skip samples that can't be maximum
-                i = i_ahead;
-            }
+function find_peaks(x, epsilon) {
+    let peaks = [];
+    let i = 0;
+    let v1 = x[i+1];
+    let d10 = x[i+1] - x[i+0];
+    let d21 = x[i+2] - x[i+1];
+    let d32 = x[i+3] - x[i+2];
+    let v210 = (d21 + d10) / 2;
+    let d210 = d21 - d10;
+    let d321 = d32 - d21;
+    while (i < x.length - 3) {
+        if (v1 > epsilon && d10 > 0 && d21 < 0 ||
+            v210 < -epsilon && d10 < 0 && d21 < 0 && d210 > 0 && d321 < 0 ||
+            v210 >  epsilon && d10 > 0 && d21 > 0 && d210 < 0 && d321 > 0) {
+            peaks.push(i+1);
         }
+        i += 1;
+        v1 = x[i+1];
+        d10 = d21;
+        d21 = d32;
+        d32 = x[i+3] - x[i+2];
+        v210 = (d10 + d21) / 2;
+        d210 = d321;
+        d321 = d32 - d21;
     }
-    return maxima;
+    return peaks;
 }
 
 var pulseFFTArray = [];
@@ -133,9 +138,21 @@ function copyData(toCopy = sincFFTArray) {
 
 var Analysis = {
     M: 4096,
+    minF1: 10,
+    maxF1: 75,
+    minF2: 40,
+    maxF2: 300,
 
     init : function()
     {
+        const log2MinF1 = Math.log2(this.minF1);
+        const log2MaxF1 = Math.log2(this.maxF1);
+        const log2MinF2 = Math.log2(this.minF2);
+        const log2MaxF2 = Math.log2(this.maxF2);
+        this.bF1 = 1 / (log2MaxF1 / log2MinF1 - 1);
+        this.bF2 = 1 / (log2MaxF2 / log2MinF2 - 1);
+        this.mF1 = this.bF1 / log2MinF1;
+        this.mF2 = this.bF2 / log2MinF2;
     },
 
     draw : function(outArray)
@@ -161,10 +178,11 @@ var Analysis = {
         amplCtx.clearRect(0, 0, amplCanvas.width, amplCanvas.height);
         amplCtx.strokeStyle = "black";
         amplCtx.beginPath()
-        for (let i = 0; i < this.M; i += 1) {
-          const x = i / this.M * amplCanvas.width
-          const y = (0.5 - 0.5 * outArray[i]) * amplCanvas.height;
-          amplCtx.lineTo(x, y)
+        const iOff = Math.round((this.M / 2) % (1 / fsample));
+        for (let i = 0; i < this.M/2; i += 1) {
+            const x = 2 * i / this.M * amplCanvas.width
+            const y = (0.5 - 1.25 * outArray[this.M/4 + i - iOff]) * amplCanvas.height;
+            amplCtx.lineTo(x, y)
         }
         amplCtx.stroke()
 
@@ -172,17 +190,19 @@ var Analysis = {
         freqCtx.strokeStyle = "blue";
         freqCtx.beginPath()
         for (let i = 0; i < this.M/4; i += 1) {
-          const x = Math.log2(1 + 4 * i / this.M) * freqCanvas.width
-          const y = (0.25 - Math.log2(Math.max(1e-10, 0.05 * pulseFFTArray[i])) / 20) * freqCanvas.height;
-          freqCtx.lineTo(x, y)
+            const x = Math.log2(1 + 4 * i / this.M) * freqCanvas.width
+            const h = Math.log2(Math.max(1e-10, pulseFFTArray[i])) / 18;
+            const y = (0.5 - Math.clamp(h, -0.5, 0.5)) * freqCanvas.height;
+            freqCtx.lineTo(x, y)
         }
         freqCtx.stroke()
         freqCtx.strokeStyle = "black";
         freqCtx.beginPath()
         for (let i = 0; i < this.M/4; i += 1) {
-          const x = Math.log2(1 + 4 * i / this.M) * freqCanvas.width
-          const y = (0.25 - Math.log2(Math.max(1e-10, 0.05 * outFFTArray[i])) / 20) * freqCanvas.height;
-          freqCtx.lineTo(x, y)
+            const x = Math.log2(1 + 4 * i / this.M) * freqCanvas.width;
+            const h = Math.log2(Math.max(1e-10, outFFTArray[i])) / 18;
+            const y = (0.5 - Math.clamp(h, -0.5, 0.5)) * freqCanvas.height;
+            freqCtx.lineTo(x, y)
         }
         freqCtx.lineTo(freqCanvas.width, freqCanvas.height);
         freqCtx.lineTo(0, freqCanvas.height);
@@ -194,13 +214,13 @@ var Analysis = {
         const sincFFTMax = Math.max(...sincFFTArray);
         const sincFFTMin = Math.min(...sincFFTArray);
         for (let i = 0; i < this.M/4; i += 1) {
-          const x = Math.log2(1 + 4 * i / this.M) * filtCanvas.width
-          const y = filtCanvas.height * (1 - (sincFFTArray[i] - sincFFTMin) / (sincFFTMax - sincFFTMin));
-          filtCtx.lineTo(x, y)
+            const x = Math.log2(1 + 4 * i / this.M) * filtCanvas.width
+            const y = filtCanvas.height * (1 - (sincFFTArray[i] - sincFFTMin) / (sincFFTMax - sincFFTMin));
+            filtCtx.lineTo(x, y)
         }
         filtCtx.stroke()
         filtCtx.strokeStyle = "black";
-        const sincFFTPeaks = find_peaks(sincFFTArray);
+        const sincFFTPeaks = find_peaks(sincFFTArray, 0.1);
         for (let j = 0; j < sincFFTPeaks.length; j += 1) {
             const i = sincFFTPeaks[j];
             const x = Math.log2(1 + 4 * i / this.M) * filtCanvas.width
@@ -210,6 +230,26 @@ var Analysis = {
             filtCtx.stroke()
         }
         filtCtx.stroke()
+
+        document.getElementById("formantDiv").innerHTML = `F1 = ${sincFFTPeaks[0]*sampleRate/this.M}, F2 = ${sincFFTPeaks[1]*sampleRate/this.M}`;
+
+        // spaceCtx.clearRect(0, 0, spaceCanvas.width, spaceCanvas.height);
+        
+        spaceCtx.beginPath()
+        spaceCtx.moveTo(spaceCanvas.width, spaceCanvas.height)
+        const xboundary = (1 - this.mF2 * Math.log2(this.maxF1) + this.bF2) * spaceCanvas.width;
+        const yboundary = (    this.mF1 * Math.log2(this.minF2) - this.bF1) * spaceCanvas.height;
+        spaceCtx.lineTo(spaceCanvas.width, yboundary);
+        spaceCtx.lineTo(xboundary, spaceCanvas.height);
+        spaceCtx.fill();
+
+        if (sincFFTPeaks.length >= 2) {
+            spaceCtx.beginPath();
+            const x = (1 - this.mF2 * Math.log2(sincFFTPeaks[1]) + this.bF2) * spaceCanvas.width;
+            const y = (    this.mF1 * Math.log2(sincFFTPeaks[0]) - this.bF1) * spaceCanvas.height;
+            spaceCtx.arc(x, y, 10, 0, 2*Math.PI);
+            spaceCtx.fill();
+        }
     }
 }
 

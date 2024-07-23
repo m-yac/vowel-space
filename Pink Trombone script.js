@@ -775,7 +775,7 @@ var Glottis =
         var vibrato = 0;
         if (autoWobble)
         {
-            vibrato += 0.01 * this.vibratoAmount * Math.sin(2*Math.PI * this.totalTime *this.vibratoFrequency);          
+            vibrato += 0.001 * this.vibratoAmount * Math.sin(2*Math.PI * this.totalTime *this.vibratoFrequency);          
             vibrato += 0.2 * this.vibratoAmount * noise.simplex1(this.totalTime * 4.07);
             vibrato += 0.4 * this.vibratoAmount * noise.simplex1(this.totalTime * 2.15);
             // vibrato += 0.2 * noise.simplex1(this.totalTime * 0.98);
