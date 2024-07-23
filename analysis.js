@@ -155,7 +155,7 @@ var Analysis = {
         this.mF2 = this.bF2 / log2MinF2;
     },
 
-    draw : function(outArray)
+    draw : function(outArray, middlePeakOffset)
     {
         const fsample = Glottis.smoothFrequency / sampleRate;
         const fblock = this.M * fsample;
@@ -178,10 +178,10 @@ var Analysis = {
         amplCtx.clearRect(0, 0, amplCanvas.width, amplCanvas.height);
         amplCtx.strokeStyle = "black";
         amplCtx.beginPath()
-        const iOff = Math.round((this.M / 2) % (1 / fsample));
+        const iOff = this.M/4 - middlePeakOffset;
         for (let i = 0; i < this.M/2; i += 1) {
             const x = 2 * i / this.M * amplCanvas.width
-            const y = (0.5 - 1.25 * outArray[this.M/4 + i - iOff]) * amplCanvas.height;
+            const y = (0.5 - 1.25 * outArray[iOff + i]) * amplCanvas.height;
             amplCtx.lineTo(x, y)
         }
         amplCtx.stroke()

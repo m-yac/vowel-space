@@ -476,6 +476,7 @@ var AudioSystem =
     soundOn : false,
 
     peaksAnalyzed: 0,
+    middlePeakOffset: undefined,
     analysisBuffer: [],
 
     init : function ()
@@ -553,6 +554,11 @@ var AudioSystem =
             var newPeak = Glottis.peaksGenerated > AudioSystem.peaksAnalyzed;
             if (newPeak) {
                 AudioSystem.peaksAnalyzed = Glottis.peaksGenerated;
+                var currentMiddlePeakOffset = Analysis.M/2 - AudioSystem.analysisBuffer.length;
+                if (!AudioSystem.middlePeakOffset ||
+                    Math.abs(currentMiddlePeakOffset) < Math.abs(AudioSystem.middlePeakOffset)) {
+                    AudioSystem.middlePeakOffset = currentMiddlePeakOffset;
+                }
             }
 
             // Continue pushing output to analysisBuffer, or if there's been a
@@ -561,8 +567,9 @@ var AudioSystem =
                 AudioSystem.analysisBuffer.push(outArray[j]);
             }
             if (AudioSystem.analysisBuffer.length == Analysis.M) {
-                requestAnimationFrame(Analysis.draw.bind(Analysis, [...AudioSystem.analysisBuffer]));
+                requestAnimationFrame(Analysis.draw.bind(Analysis, [...AudioSystem.analysisBuffer], AudioSystem.middlePeakOffset));
                 AudioSystem.analysisBuffer = [];
+                AudioSystem.middlePeakOffset = undefined;
             }
         }
         Glottis.finishBlock();
