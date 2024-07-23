@@ -280,7 +280,7 @@ var UI =
             for (var j=0; j<touches.length; j++)        
             {
                 var x = (1-(touches[j].pageX-UI.left_margin)/UI.width)*600;
-                var y = (touches[j].pageY-UI.top_margin)/UI.width*600;
+                var y = (touches[j].pageY-window.scrollY-UI.top_margin)/UI.width*600;
             }
             UI.instructionsScreenHandleTouch(x,y);
             return;
@@ -297,7 +297,7 @@ var UI =
             touch.alive = true;
             touch.id = touches[j].identifier;
             touch.x = (touches[j].pageX-UI.left_margin)/UI.width*600;
-            touch.y = (touches[j].pageY-UI.top_margin)/UI.width*600;
+            touch.y = (touches[j].pageY-window.scrollY-UI.top_margin)/UI.width*600;
             touch.index = TractUI.getIndex(touch.x, touch.y);
             touch.diameter = TractUI.getDiameter(touch.x, touch.y);
             UI.touchesWithMouse.push(touch);
@@ -325,7 +325,7 @@ var UI =
             if (touch != 0)
             {
                 touch.x = (touches[j].pageX-UI.left_margin)/UI.width*600;
-                touch.y = (touches[j].pageY-UI.top_margin)/UI.width*600;
+                touch.y = (touches[j].pageY-window.scrollY-UI.top_margin)/UI.width*600;
                 touch.index = TractUI.getIndex(touch.x, touch.y);
                 touch.diameter = TractUI.getDiameter(touch.x, touch.y);
             }
@@ -368,7 +368,7 @@ var UI =
         if (UI.inInstructionsScreen)
         {
             var x = (event.pageX-UI.left_margin)/UI.width*600;
-            var y = (event.pageY-UI.top_margin)/UI.width*600;
+            var y = (event.pageY-window.scrollY-UI.top_margin)/UI.width*600;
             UI.instructionsScreenHandleTouch(x,y);
             return;
         }
@@ -380,7 +380,7 @@ var UI =
         touch.alive = true;
         touch.id = "mouse"+Math.random();
         touch.x = (event.pageX-UI.left_margin)/UI.width*600;
-        touch.y = (event.pageY-UI.top_margin)/UI.width*600;
+        touch.y = (event.pageY-window.scrollY-UI.top_margin)/UI.width*600;
         touch.index = TractUI.getIndex(touch.x, touch.y);
         touch.diameter = TractUI.getDiameter(touch.x, touch.y);
         UI.mouseTouch = touch;
@@ -394,7 +394,7 @@ var UI =
         var touch = UI.mouseTouch;
         if (!touch.alive) return;
         touch.x = (event.pageX-UI.left_margin)/UI.width*600;
-        touch.y = (event.pageY-UI.top_margin)/UI.width*600;
+        touch.y = (event.pageY-window.scrollY-UI.top_margin)/UI.width*600;
         touch.index = TractUI.getIndex(touch.x, touch.y);
         touch.diameter = TractUI.getDiameter(touch.x, touch.y); 
         UI.handleTouches();

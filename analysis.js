@@ -71,7 +71,7 @@ var spaceCtx = spaceCanvas.getContext("2d");
 function TractModel() {
     this.lipOutput = 0;
     this.noseOutput = 0;
-    this.transients = Tract.transients.map((transient) => ({...transient}));
+    this.transients = []; //Tract.transients.map((transient) => ({...transient}));
 
     this.R = new Float64Array(Tract.n);
     this.L = new Float64Array(Tract.n);
@@ -211,16 +211,17 @@ var Analysis = {
         filtCtx.clearRect(0, 0, filtCanvas.width, filtCanvas.height);
         filtCtx.strokeStyle = "red";
         filtCtx.beginPath()
-        const sincFFTMax = Math.max(...sincFFTArray);
         const sincFFTMin = Math.min(...sincFFTArray);
+        const sincFFTRange = Math.max(...sincFFTArray) - sincFFTMin;
+        const normSincFFTArray = sincFFTArray.map((x) => (x - sincFFTMin) / sincFFTRange);
         for (let i = 0; i < this.M/4; i += 1) {
             const x = Math.log2(1 + 4 * i / this.M) * filtCanvas.width
-            const y = filtCanvas.height * (1 - (sincFFTArray[i] - sincFFTMin) / (sincFFTMax - sincFFTMin));
+            const y = filtCanvas.height * (1 - normSincFFTArray[i]);
             filtCtx.lineTo(x, y)
         }
         filtCtx.stroke()
         filtCtx.strokeStyle = "black";
-        const sincFFTPeaks = find_peaks(sincFFTArray, 0.1);
+        const sincFFTPeaks = find_peaks(normSincFFTArray, 0.1);
         for (let j = 0; j < sincFFTPeaks.length; j += 1) {
             const i = sincFFTPeaks[j];
             const x = Math.log2(1 + 4 * i / this.M) * filtCanvas.width
@@ -229,7 +230,6 @@ var Analysis = {
             filtCtx.lineTo(x, filtCanvas.height)
             filtCtx.stroke()
         }
-        filtCtx.stroke()
 
         document.getElementById("formantDiv").innerHTML = `F1 = ${sincFFTPeaks[0]*sampleRate/this.M}, F2 = ${sincFFTPeaks[1]*sampleRate/this.M}`;
 
