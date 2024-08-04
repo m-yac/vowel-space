@@ -96,7 +96,7 @@ var UI =
     width : 600,
     top_margin : 5,
     left_margin : 5,
-    inAboutScreen : true,
+    inAboutScreen : false,
     inInstructionsScreen : false,
     instructionsLine : 0,
     debugText : "",
@@ -262,11 +262,11 @@ var UI =
     startTouches : function(event)
     {
         event.preventDefault();    
-        if (!AudioSystem.started)
-        {
-            AudioSystem.started = true;
-            AudioSystem.startSound();
-        }
+        // if (!AudioSystem.started)
+        // {
+        //     AudioSystem.started = true;
+        //     AudioSystem.startSound();
+        // }
         
         if (UI.inAboutScreen)
         {
@@ -279,7 +279,7 @@ var UI =
             var touches = event.changedTouches;
             for (var j=0; j<touches.length; j++)        
             {
-                var x = (1-(touches[j].pageX-UI.left_margin)/UI.width)*600;
+                var x = (touches[j].pageX-window.scrollX-UI.left_margin)/UI.width*600;
                 var y = (touches[j].pageY-window.scrollY-UI.top_margin)/UI.width*600;
             }
             UI.instructionsScreenHandleTouch(x,y);
@@ -296,7 +296,7 @@ var UI =
             touch.fricative_intensity = 0;            
             touch.alive = true;
             touch.id = touches[j].identifier;
-            touch.x = (touches[j].pageX-UI.left_margin)/UI.width*600;
+            touch.x = (touches[j].pageX-window.scrollX-UI.left_margin)/UI.width*600;
             touch.y = (touches[j].pageY-window.scrollY-UI.top_margin)/UI.width*600;
             touch.index = TractUI.getIndex(touch.x, touch.y);
             touch.diameter = TractUI.getDiameter(touch.x, touch.y);
@@ -324,7 +324,7 @@ var UI =
             var touch = UI.getTouchById(touches[j].identifier);
             if (touch != 0)
             {
-                touch.x = (touches[j].pageX-UI.left_margin)/UI.width*600;
+                touch.x = (touches[j].pageX-window.scrollX-UI.left_margin)/UI.width*600;
                 touch.y = (touches[j].pageY-window.scrollY-UI.top_margin)/UI.width*600;
                 touch.index = TractUI.getIndex(touch.x, touch.y);
                 touch.diameter = TractUI.getDiameter(touch.x, touch.y);
@@ -355,11 +355,11 @@ var UI =
       
     startMouse : function(event)
     {
-        if (!AudioSystem.started)
-        {
-            AudioSystem.started = true;
-            AudioSystem.startSound();
-        }
+        // if (!AudioSystem.started)
+        // {
+        //     AudioSystem.started = true;
+        //     AudioSystem.startSound();
+        // }
         if (UI.inAboutScreen)
         {
             UI.inAboutScreen = false;
@@ -367,7 +367,7 @@ var UI =
         }
         if (UI.inInstructionsScreen)
         {
-            var x = (event.pageX-UI.left_margin)/UI.width*600;
+            var x = (event.pageX-window.scrollX-UI.left_margin)/UI.width*600;
             var y = (event.pageY-window.scrollY-UI.top_margin)/UI.width*600;
             UI.instructionsScreenHandleTouch(x,y);
             return;
@@ -379,7 +379,7 @@ var UI =
         touch.endTime = 0;
         touch.alive = true;
         touch.id = "mouse"+Math.random();
-        touch.x = (event.pageX-UI.left_margin)/UI.width*600;
+        touch.x = (event.pageX-window.scrollX-UI.left_margin)/UI.width*600;
         touch.y = (event.pageY-window.scrollY-UI.top_margin)/UI.width*600;
         touch.index = TractUI.getIndex(touch.x, touch.y);
         touch.diameter = TractUI.getDiameter(touch.x, touch.y);
@@ -393,7 +393,7 @@ var UI =
     {
         var touch = UI.mouseTouch;
         if (!touch.alive) return;
-        touch.x = (event.pageX-UI.left_margin)/UI.width*600;
+        touch.x = (event.pageX-window.scrollX-UI.left_margin)/UI.width*600;
         touch.y = (event.pageY-window.scrollY-UI.top_margin)/UI.width*600;
         touch.index = TractUI.getIndex(touch.x, touch.y);
         touch.diameter = TractUI.getDiameter(touch.x, touch.y); 
@@ -1131,6 +1131,7 @@ var Tract =
         for (var j=0; j<UI.touchesWithMouse.length; j++)
         {
             var touch = UI.touchesWithMouse[j];
+            if (touch == TractUI.tongueTouch || touch == TractUI.lipTouch) continue;
             if (touch.index<2 || touch.index>Tract.n) continue;
             if (touch.diameter<=0) continue;            
             var intensity = touch.fricative_intensity;
@@ -1168,8 +1169,10 @@ var TractUI =
     innerTongueControlRadius : 2.05,
     outerTongueControlRadius : 3.5,
     lipDiameter: 2,
-    innerLipControlRadius : 0.5,
+    innerLipControlRadius : 0.6875,
     outerLipControlRadius : 2,
+    tongueTipIndex: 30,
+    tongueTipDiameter: 0.7,
     tongueTouch : 0,
     lipTouch : 0,
     angleScale : 0.64,
@@ -1386,9 +1389,8 @@ var TractUI =
         
         this.ctx.font="17px Arial";        
         this.drawTextStraight(Tract.n*0.18, 3, "tongue control  ");   
-        this.drawText(this.lipIndex, 0.65 + this.outerLipControlRadius, "lip"); 
-        this.drawText(this.lipIndex, 0.95 + this.outerLipControlRadius, "control"); 
         this.ctx.textAlign = "right";
+        this.drawText(this.lipIndex + 3, this.outerLipControlRadius, "lip control"); 
         this.drawText(Tract.n*1.03, -1.07, "nasals");
         this.drawText(Tract.n*1.03, -0.28, "stops");
         this.drawText(Tract.n*1.03, 0.51, "fricatives");
@@ -1688,7 +1690,7 @@ var TractUI =
         for (var j=0; j<UI.touchesWithMouse.length; j++) 
         {
             var touch = UI.touchesWithMouse[j];
-            if (!touch.alive) continue;            
+            if (!touch.alive || touch == this.tongueTouch || touch == this.lipTouch) continue;            
             var x = touch.x;
             var y = touch.y;
             var index = TractUI.getIndex(x,y);
