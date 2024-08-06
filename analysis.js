@@ -11,6 +11,32 @@ function pow2ceil(x) {
     return x + 1;
 }
 
+// Inserts an element into a sorted array
+function insertSorted(arr, x, compareFn) {
+    let i = 0;
+    while (i < arr.length && compareFn(arr[i], x) < 0) { i++; }
+    arr.splice(i, 0, x);
+}
+
+// Source: https://github.com/stonkpunk/my-npm-modules/blob/main/barycentric-coordinates/index.js
+function determinant(m00,m01,m02,m03,
+                     m10,m11,m12,m13,
+                     m20,m21,m22,m23,
+                     m30,m31,m32,m33){ //http://www.euclideanspace.com/maths/algebra/matrix/functions/determinant/fourD/index.htm
+    return  m03 * m12 * m21 * m30 - m02 * m13 * m21 * m30-
+            m03 * m11 * m22 * m30 +m01 * m13 * m22 * m30+
+            m02 * m11 * m23 * m30 -m01 * m12 * m23 * m30-
+            m03 * m12 * m20 * m31 +m02 * m13 * m20 * m31+
+            m03 * m10 * m22 * m31 -m00 * m13 * m22 * m31-
+            m02 * m10 * m23 * m31 +m00 * m12 * m23 * m31+
+            m03 * m11 * m20 * m32 -m01 * m13 * m20 * m32-
+            m03 * m10 * m21 * m32 +m00 * m13 * m21 * m32+
+            m01 * m10 * m23 * m32 -m00 * m11 * m23 * m32-
+            m02 * m11 * m20 * m33 +m01 * m12 * m20 * m33+
+            m02 * m10 * m21 * m33 -m00 * m12 * m21 * m33-
+            m01 * m10 * m22 * m33 +m00 * m11 * m22 * m33;
+}
+
 // Some common windowing functions
 
 function hann(i, N) {
@@ -231,6 +257,9 @@ function clickIndexDiameter(index, diameter) {
 // Formant data
 
 const formantData = Float64Array.from(rawFormantData);
+const formantTree = new kdTree(Array.from({ length: formantData.length / 4 }, (_, i) => ({"f1": formantData[(i<<2)|0], "f2": formantData[(i<<2)|1], "f3": formantData[(i<<2)|2], "ix": i})),
+                               ((a,b) => Math.pow(a[0] - b[0], 2) + Math.pow(a[1] - b[1], 2) + Math.pow(a[2] - b[2], 2)),
+                               ["f1", "f2", "f3"]);
 
 function toFormantDataIndex(iLipDiam, iTongueY, iTongueX, iFormant) {
     return (iLipDiam << 10) | (iTongueY << 6) | (iTongueX << 2) | iFormant;
@@ -280,6 +309,155 @@ function fromLipTongueValues(lipDiameter, tongueDiameter, tongueIndex) {
     const out = fromPoint*0.5*(TractUI.tongueUpperIndexBound-TractUI.tongueLowerIndexBound);
     const normTongueIndex = out > 0 ? Math.clamp((tongueIndex - TractUI.tongueIndexCentre) / out, -1.0, 1.0) : 0;
     return fromNormLipTongueValues(normLipDiam, normTongueDiam, normTongueIndex);
+}
+
+function FormantTet(fd, tx, ty) {
+    const fd1 = fd < 0xF ? fd + 1 : fd - 1;
+    const tx1 = tx < 0xF ? tx + 1 : tx - 1;
+    const ty1 = ty < 0xF ? ty + 1 : ty - 1;
+    this.x = Array.from({length: 4}, _ => new Uint8Array(4).fill(1));
+    this.f = Array.from({length: 4}, _ => new Float64Array(4).fill(1.0));
+    this.set(0, fd, tx, ty,  true);
+    this.set(1, fd1,tx ,ty,  true);
+    this.set(2, fd, tx1,ty,  true);
+    this.set(3, fd, tx, ty1, true);
+    this.corner_index = 0;
+    this.detC = Array.from({length: 4}, _ => new Float64Array(4));
+    this.cache_detC(0);
+    this.cache_detC(1);
+    this.cache_detC(2);
+    this.cache_detC(3);
+    this.cache_det();
+}
+
+FormantTet.prototype.compute_detC = function compute_detC(i, j) {
+    const i0 = (i+1)%4; const i1 = (i+2)%4; const i2 = (i+3)%4;
+    const j0 = (j+1)%4; const j1 = (j+2)%4; const j2 = (j+3)%4;
+    const detC =  this.f[i0][j0] * (this.f[i1][j1] * this.f[i2][j2] - this.f[i2][j1] * this.f[i1][j2])
+                - this.f[i0][j1] * (this.f[i1][j0] * this.f[i2][j2] - this.f[i1][j2] * this.f[i2][j0])
+                + this.f[i0][j2] * (this.f[i1][j0] * this.f[i2][j1] - this.f[i1][j1] * this.f[i2][j0]);
+    return i % 2 == 0 ? detC : -detC;
+}
+
+FormantTet.prototype.compute_det = function compute_det(i, row) {
+    return   row[0] * this.detC[i][0]
+           - row[1] * this.detC[i][1]
+           + row[2] * this.detC[i][2]
+           - row[3] * this.detC[i][3];
+}
+
+FormantTet.prototype.cache_detC = function cache_detC(i) {
+    this.detC[i][0] = this.compute_detC(i,0);
+    this.detC[i][1] = this.compute_detC(i,1);
+    this.detC[i][2] = this.compute_detC(i,2);
+    this.detC[i][3] = this.compute_detC(i,3);
+}
+
+FormantTet.prototype.cache_det = function cache_det() {
+    this.det = this.compute_det(0, this.f[0]);
+    this.id = (toFormantDataIndex(this.x[0][0], this.x[0][1], this.x[0][2], 0) << 48) |
+              (toFormantDataIndex(this.x[1][0], this.x[1][1], this.x[1][2], 0) << 32) |
+              (toFormantDataIndex(this.x[2][0], this.x[2][1], this.x[2][2], 0) << 16) |
+              (toFormantDataIndex(this.x[3][0], this.x[3][1], this.x[3][2], 0) <<  0);
+}
+
+FormantTet.prototype.set = function set(i, ld, ty, tx, noRecompute) {
+    if (ld < 0 || ld > 0xF || tx < 0 || tx > 0xF || ty < 0 || ty > 0xF) { debugger; }
+    this.x[i][0] = ld;
+    this.x[i][1] = ty;
+    this.x[i][2] = tx;
+    this.f[i][0] = formantData[toFormantDataIndex(ld, ty, tx, 0)];
+    this.f[i][1] = formantData[toFormantDataIndex(ld, ty, tx, 1)];
+    this.f[i][2] = formantData[toFormantDataIndex(ld, ty, tx, 2)];
+    if (!noRecompute) {
+        if (i != 0) { this.cache_detC(0); }
+        if (i != 1) { this.cache_detC(1); }
+        if (i != 2) { this.cache_detC(2); }
+        if (i != 3) { this.cache_detC(3); }
+        this.cache_det();
+    }
+}
+
+FormantTet.prototype.flip = function flip(i) {
+    // console.log(`Flipping ${i} (${this.corner_index}) [${this.x[0]}] [${this.x[1]}] [${this.x[2]}] [${this.x[3]}]`)
+    if (this.corner_index == -1) {
+        const x0 = (this.x[(i+1)%4][0] + this.x[(i+2)%4][0] + this.x[(i+3)%4][0] - this.x[i][0]) / 2;
+        const x1 = (this.x[(i+1)%4][1] + this.x[(i+2)%4][1] + this.x[(i+3)%4][1] - this.x[i][1]) / 2;
+        const x2 = (this.x[(i+1)%4][2] + this.x[(i+2)%4][2] + this.x[(i+3)%4][2] - this.x[i][2]) / 2;
+        if (x0 < 0 || x0 > 0xF || x1 < 0 || x1 > 0xF || x2 < 0 || x2 > 0xF) {
+            debugger;
+        }
+        this.set(i, x0, x1, x2);
+        this.corner_index = i;
+    }
+    else if (this.corner_index == i) {
+        const x0 = this.x[(i+1)%4][0] + this.x[(i+2)%4][0] + this.x[(i+3)%4][0] - 2 * this.x[i][0];
+        const x1 = this.x[(i+1)%4][1] + this.x[(i+2)%4][1] + this.x[(i+3)%4][1] - 2 * this.x[i][1];
+        const x2 = this.x[(i+1)%4][2] + this.x[(i+2)%4][2] + this.x[(i+3)%4][2] - 2 * this.x[i][2];
+        if (x0 < 0 || x0 > 0xF || x1 < 0 || x1 > 0xF || x2 < 0 || x2 > 0xF) {
+            debugger;
+        }
+        this.set(i, x0, x1, x2);
+        this.corner_index = -1;
+    }
+    else {
+        const x0 = 2 * this.x[this.corner_index][0] - this.x[i][0];
+        const x1 = 2 * this.x[this.corner_index][1] - this.x[i][1];
+        const x2 = 2 * this.x[this.corner_index][2] - this.x[i][2];
+        if (x0 < 0 || x0 > 0xF || x1 < 0 || x1 > 0xF || x2 < 0 || x2 > 0xF) {
+            return false;
+        }
+        this.set(i, x0, x1, x2);
+    }
+    // console.log(`-  ${i} (${this.corner_index}) [${this.x[0]}] [${this.x[1]}] [${this.x[2]}] [${this.x[3]}]`)
+    return true;
+}
+
+FormantTet.prototype.barycentric = function barycentric(i, f1, f2, f3) {
+    return this.compute_det(i, [f1, f2, f3, 1]) / this.det;
+}
+
+var tet = new FormantTet(0,0,0);
+var projected = false;
+
+function fromFormants(f1, f2, f3) {
+    projected = false;
+    const strt = fromFormantDataIndex(formantTree.nearest({"f1": f1, "f2": f2, "f3": f3}, 1)[0][0]["ix"]<<2);
+    tet = new FormantTet(strt[0], strt[1], strt[2])
+    let l0 = 0.25; let l1 = 0.25; let l2 = 0.25; let l3 = 0.25;
+    let nLoops = 0;
+    let seen = new Set();
+    mainLoop: while (true) {
+        seen.add(tet.id);
+        l0 = tet.barycentric(0, f1, f2, f3);
+        l1 = tet.barycentric(1, f1, f2, f3);
+        l2 = tet.barycentric(2, f1, f2, f3);
+        l3 = tet.barycentric(3, f1, f2, f3);
+        const min_l = [[l0,0], [l1,1], [l2,2], [l3,3]];
+        min_l.sort((a,b) => a[0] - b[0]);
+        if (min_l[0][0] < 0) {
+            for (let i = 0; i < 4; i++) {
+                if (tet.flip(min_l[0][1])) {
+                    if (seen.has(tet.id)) {
+                        tet.flip(min_l[0][1]);
+                    }
+                    else {
+                        nLoops++;
+                        continue mainLoop;
+                    }
+                }
+            }
+            l0 = Math.max(0, l0); l1 = Math.max(0, l1); l2 = Math.max(0, l2); l3 = Math.max(0, l3);
+            const sum = l0 + l1 + l2 + l3;
+            l0 /= sum; l1 /= sum; l2 /= sum; l3 /= sum;
+            projected = true;
+        }
+        break;
+    }
+    const res = [l0 * tet.x[0][0] + l1 * tet.x[1][0] + l2 * tet.x[2][0] + l3 * tet.x[3][0],
+                 l0 * tet.x[0][1] + l1 * tet.x[1][1] + l2 * tet.x[2][1] + l3 * tet.x[3][1],
+                 l0 * tet.x[0][2] + l1 * tet.x[1][2] + l2 * tet.x[2][2] + l3 * tet.x[3][2]];
+    return res;
 }
 
 function FormantDataCollection() {
@@ -566,6 +744,56 @@ var Analysis = {
             x = spaceCanvas.height + (spaceCanvas.width - spaceCanvas.height) / 2;
             y = (this.mF3 * Math.log2(sincFFTPeaks[2]) - this.bF3) * spaceCanvas.height;
             const x_spread = (spaceCanvas.width - spaceCanvas.height) / 3;
+            spaceCtx.arc(x, y, 10, 0, 2*Math.PI);
+            spaceCtx.fill();
+
+            const [iLipDiam, iTongueY, iTongueX] = fromFormants(sincFFTPeaks[0], sincFFTPeaks[1], sincFFTPeaks[2]);
+            const iLipDiam0 = Math.floor(iLipDiam);
+            const iTongueY0 = Math.floor(iTongueY);
+            const iTongueX0 = Math.floor(iTongueX);
+            const iLipDiam1 = Math.ceil(iLipDiam);
+            const iTongueY1 = Math.ceil(iTongueY);
+            const iTongueX1 = Math.ceil(iTongueX);
+            const tL = iLipDiam % 1;
+            const tY = iTongueY % 1;
+            const tX = iTongueX % 1;
+            const j000 = toFormantDataIndex(iLipDiam0, iTongueY0, iTongueX0, 0);
+            const j001 = toFormantDataIndex(iLipDiam0, iTongueY0, iTongueX1, 0);
+            const j010 = toFormantDataIndex(iLipDiam0, iTongueY1, iTongueX0, 0);
+            const j011 = toFormantDataIndex(iLipDiam0, iTongueY1, iTongueX1, 0);
+            const j100 = toFormantDataIndex(iLipDiam1, iTongueY0, iTongueX0, 0);
+            const j101 = toFormantDataIndex(iLipDiam1, iTongueY0, iTongueX1, 0);
+            const j110 = toFormantDataIndex(iLipDiam1, iTongueY1, iTongueX0, 0);
+            const j111 = toFormantDataIndex(iLipDiam1, iTongueY1, iTongueX1, 0);
+            const f0 = formantData[j000|0] * (1 - tL) * (1 - tY) * (1 - tX) +
+                       formantData[j001|0] * (1 - tL) * (1 - tY) *      tX  +
+                       formantData[j010|0] * (1 - tL) *      tY  * (1 - tX) +
+                       formantData[j011|0] * (1 - tL) *      tY  *      tX  +
+                       formantData[j100|0] *      tL  * (1 - tY) * (1 - tX) +
+                       formantData[j101|0] *      tL  * (1 - tY) *      tX  +
+                       formantData[j110|0] *      tL  *      tY  * (1 - tX) +
+                       formantData[j111|0] *      tL  *      tY  *      tX;
+            const f1 = formantData[j000|1] * (1 - tL) * (1 - tY) * (1 - tX) +
+                       formantData[j001|1] * (1 - tL) * (1 - tY) *      tX  +
+                       formantData[j010|1] * (1 - tL) *      tY  * (1 - tX) +
+                       formantData[j011|1] * (1 - tL) *      tY  *      tX  +
+                       formantData[j100|1] *      tL  * (1 - tY) * (1 - tX) +
+                       formantData[j101|1] *      tL  * (1 - tY) *      tX  +
+                       formantData[j110|1] *      tL  *      tY  * (1 - tX) +
+                       formantData[j111|1] *      tL  *      tY  *      tX;
+            for (let i = 0; i < 4; i++) {
+                spaceCtx.fillStyle = 'red';
+                spaceCtx.beginPath();
+                const j = toFormantDataIndex(tet.x[i][0], tet.x[i][1], tet.x[i][2], 0);
+                x = (1 - this.mF2 * Math.log2(formantData[j+1]) + this.bF2) * spaceCanvas.height;
+                y = (    this.mF1 * Math.log2(formantData[j+0]) - this.bF1) * spaceCanvas.height;
+                spaceCtx.arc(x, y, 10, 0, 2*Math.PI);
+                spaceCtx.fill();
+            }
+            spaceCtx.fillStyle = projected ? 'blue' : 'green';
+            spaceCtx.beginPath();
+            x = (1 - this.mF2 * Math.log2(f1) + this.bF2) * spaceCanvas.height;
+            y = (    this.mF1 * Math.log2(f0) - this.bF1) * spaceCanvas.height;
             spaceCtx.arc(x, y, 10, 0, 2*Math.PI);
             spaceCtx.fill();
         }
