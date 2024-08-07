@@ -26,6 +26,11 @@ ax.xaxis.set_major_formatter(mticker.FuncFormatter(log_tick_formatter))
 ax.yaxis.set_major_formatter(mticker.FuncFormatter(log_tick_formatter))
 ax.zaxis.set_major_formatter(mticker.FuncFormatter(log_tick_formatter))
 
+c_by_boundary = [(1.0 if i == 0 or i == 15 else 0.2,
+                  1.0 if j == 0 or j == 15 else 0.2,
+                  1.0 if k == 0 or k == 15 else 0.2)
+                  for i in range(0,16) for j in range(0,16) for k in range(0,16)]
+
 pts = ax.scatter(np.log2(f1), np.log2(f2), np.log2(f3), c=np.log2(f4), label='F4')
 
 fig.colorbar(pts).set_label("F4")
