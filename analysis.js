@@ -125,6 +125,7 @@ function transformCurve(index, bits, lookupTable) {
 
 // ----------------------------------------------------------------
 
+var containersDiv = document.getElementById("containersDiv");
 var allCanvasContainers = document.querySelectorAll(".canvas-container");
 var freqCanvas = document.getElementById("freqCanvas");
 var freqCtx = freqCanvas.getContext("2d");
@@ -248,16 +249,22 @@ function clickIndexDiameter(index, diameter) {
     const pageX = (x + window.scrollX + UI.left_margin) * UI.width / 600;
     const pageY = (y + window.scrollY + UI.top_margin) * UI.width / 600;
     const event = { pageX: pageX, pageY: pageY };
-    UI.mouseDown = true;
-    UI.startMouse(event);
-    UI.mouseDown = false;
-    UI.endMouse(event);
+    if (!isNaN(pageX) && !isNaN(pageY)) {
+        UI.mouseDown = true;
+        UI.startMouse(event);
+        UI.mouseDown = false;
+        UI.endMouse(event);
+    }
 }
 
 // Formant data
 
+function toFormantDataIndex(iLipDiam, iTongueY, iTongueX) {
+    return (iLipDiam << 10) | (iTongueY << 6) | (iTongueX << 2);
+}
+
 function formantData(iLipDiam, iTongueY, iTongueX, iFormant) {
-    const i = (iLipDiam << 10) | (iTongueY << 6) | (iTongueX << 2);
+    const i = toFormantDataIndex(iLipDiam, iTongueY, iTongueX);
     if (iFormant !== undefined) {
         return rawFormantData[i | iFormant];
     }
@@ -357,6 +364,22 @@ FormantTet.prototype.barycentric_coords = function barycentric_coords(f1, f2, f3
             this.barycentric_coord(f1, f2, f3, 3)];
 }
 
+FormantTet.prototype.interp_coords = function interp_coords(f1, f2, f3) {
+    const l = this.barycentric_coords(f1, f2, f3);
+    l[0] = Math.max(0, l[0]);
+    l[1] = Math.max(1, l[1]);
+    l[2] = Math.max(2, l[2]);
+    l[3] = Math.max(3, l[3]);
+    const sum = l[0] + l[1] + l[2] + l[3];
+    l[0] = l[0] / sum;
+    l[1] = l[1] / sum;
+    l[2] = l[2] / sum;
+    l[3] = l[3] / sum;
+    return [this.x[0][0] * l[0] + this.x[1][0] * l[1] + this.x[2][0] * l[2] + this.x[3][0] * l[3],
+            this.x[0][1] * l[0] + this.x[1][1] * l[1] + this.x[2][1] * l[2] + this.x[3][1] * l[3],
+            this.x[0][2] * l[0] + this.x[1][2] * l[1] + this.x[2][2] * l[2] + this.x[3][2] * l[3]]
+}
+
 FormantTet.prototype.neighbor = function neighbor(i) {
     let new_corner_index = this.corner_index;
     let new_x = this.x.slice(); // shallow copy
@@ -408,9 +431,9 @@ FormantTet.prototype.nearest = function nearest(f1, f2, f3, seen) {
 }
 
 FormantTet.treePoint = function treePoint(f1, f2, f3, iLipDiam, iTongueX, iTongueY) {
-    const p = [(f1 - minF1) / (maxF1 - minF1),
-               (f2 - minF2) / (maxF2 - minF2),
-               (f3 - minF3) / (maxF3 - minF3)];
+    const p = [f1 /* (f1 - minF1) / (maxF1 - minF1) */,
+               f2 /* (f2 - minF2) / (maxF2 - minF2) */,
+               f3 /* (f3 - minF3) / (maxF3 - minF3) */];
     if (iLipDiam !== undefined) {
         p.index = [iLipDiam, iTongueX, iTongueY];
     }
@@ -465,7 +488,7 @@ FormantDataCollection.prototype.update = function update() {
     const iLipDiam = compact1By2(iMorton >> 0);
     const iTongueY = compact1By2(iMorton >> 1);
     const iTongueX = compact1By2(iMorton >> 2);
-    this.i = toFormantDataIndex(iLipDiam, iTongueX, iTongueY, 0);
+    this.i = toFormantDataIndex(iLipDiam, iTongueX, iTongueY);
     const [lipDiameter, tongueDiameter, tongueIndex] = toLipTongueValues(iLipDiam, iTongueY, iTongueX);
     console.log(this.iHilbert, iMorton, [iLipDiam, iTongueX, iTongueY], [lipDiameter, tongueDiameter, tongueIndex]);
     clickIndexDiameter(TractUI.lipIndex, lipDiameter);
@@ -522,22 +545,57 @@ var Analysis = {
         this.mF2 = this.bF2 / log2MinF2;
         this.mF3 = this.bF3 / log2MinF3;
 
-        tractCanvas.addEventListener('mousedown', Analysis.handleMouse);
-        tractCanvas.addEventListener('mousemove', Analysis.handleMouse);
+        spaceCanvas.addEventListener('mousedown', Analysis.mouseMove.bind(this, true));
+        spaceCanvas.addEventListener('mousemove', Analysis.mouseMove.bind(this, false));
+        spaceCanvas.addEventListener('mouseup', Analysis.mouseLeave.bind(this));
+        spaceCanvas.addEventListener('mouseleave',Analysis.mouseLeave.bind(this));
 
-        allCanvasContainers.forEach((canvasContainer) => canvasContainer.addEventListener("mousedown", function () {
+        containersDiv.addEventListener("mousedown", function () {
             if (!AudioSystem.started)
             {
                 AudioSystem.started = true;
                 AudioSystem.startSound();
+                // remove class: dimmed
                 allCanvasContainers.forEach((iCanvasContainer) => iCanvasContainer.className = "canvas-container");
+                // remove class: click text
+                containersDiv.className = "containers";
             }
-        }));
+        });
     },
 
-    handleMouse: function(event)
-    {
 
+    mouseMove: function(mouseDown, event)
+    {
+        this.mouse_pageX = event.pageX;
+        this.mouse_pageY = event.pageY;
+        if (mouseDown) {
+            this.mouseDown = true;
+            this.mouseStep();
+        }
+    },
+
+    mouseStep: function() {
+        if (this.mouseDown) {
+            const rect = spaceCanvas.getBoundingClientRect();
+            const x = (this.mouse_pageX-window.scrollX-rect.left)/rect.width*1500;
+            const y = (this.mouse_pageY-window.scrollY-rect.top)/rect.height*1100;
+            const f2 = Math.pow(2, (1 - x / spaceCanvas.height + this.bF2) / this.mF2);
+            const f1 = Math.pow(2, (    y / spaceCanvas.height + this.bF1) / this.mF1);
+            this.mouseTet = (this.mouseTet || FormantTet).nearest(f1, f2, sincFFTPeaks[2]);
+            const is = this.mouseTet.interp_coords(f1, f2, sincFFTPeaks[2]);
+            const [lipDiameter, tongueDiameter, tongueIndex] = toLipTongueValues(is[0], is[2], is[1]);
+            clickIndexDiameter(TractUI.lipIndex, lipDiameter);
+            clickIndexDiameter(tongueIndex, tongueDiameter);
+
+        }
+    },
+
+    mouseLeave: function(event)
+    {
+        this.mouseDown = false;
+        this.mouse_pageX = undefined;
+        this.mouse_pageY = undefined;
+        this.mouseTet = undefined;
     },
 
     draw : function(outArray, middlePeakOffset)
@@ -613,7 +671,7 @@ var Analysis = {
         });
         const r0 = 36.436593939856664;
         const r1 = 22.14870729719607;
-        if (sincFFTPeaks[4-1][0] > 400) {
+        if (sincFFTPeaks.length >= 4 && sincFFTPeaks[4-1][0] > 400) {
             if (sincFFTPeaks[2-1][0] < 150) {
                 sincFFTPeaks.splice(3-1, 0, sincFFTPeaks[3-1]);
                 let [x, x_range, dy_range] = sincFFTPeaks[3-1];
@@ -768,7 +826,7 @@ var Analysis = {
                        formantData[j100|1] *      tL  * (1 - tY) * (1 - tX) +
                        formantData[j101|1] *      tL  * (1 - tY) *      tX  +
                        formantData[j110|1] *      tL  *      tY  * (1 - tX) +
-                       formantData[j111|1] *      tL  *      tY  *      tX;*/
+                       formantData[j111|1] *      tL  *      tY  *      tX;
             const tet = FormantTet.nearest(sincFFTPeaks[0], sincFFTPeaks[1], sincFFTPeaks[2]);
             const coords = tet.barycentric_coords(sincFFTPeaks[0], sincFFTPeaks[1], sincFFTPeaks[2]);
             spaceCtx.fillStyle = coords[0] >= 0 && coords[1] >= 0 && coords[2] >= 0 && coords[3] >= 0 ? 'green' : 'red';
@@ -785,6 +843,10 @@ var Analysis = {
             y = (    this.mF1 * Math.log2(f0) - this.bF1) * spaceCanvas.height;
             spaceCtx.arc(x, y, 10, 0, 2*Math.PI);
             spaceCtx.fill();*/
+        }
+
+        if (this.mouseDown) {
+            this.mouseStep();
         }
 
         formantDataCollection.step(sincFFTPeaks);
