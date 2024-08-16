@@ -1,6 +1,6 @@
 
 body {
-  background-color: #F0F0F0;
+  background-color: white;
 }
 
 .containers {
@@ -16,7 +16,6 @@ body {
   flex-basis: 0;
   max-width: 600px;
   flex-grow: 1;
-  border-radius: 15px;
 }
 
 canvas {

@@ -122,7 +122,8 @@ function transformCurve(index, bits, lookupTable) {
 
 // ----------------------------------------------------------------
 
-var oppOrchid = '#968ffa';
+var oppOrchid = '#968ffa'; // OKLAB = 96.45% 0.02 284.69
+var oppPalePink = '#e9e9ff';
 
 var allDiv = document.getElementById("allDiv");
 var containersDiv = document.getElementById("containersDiv");
@@ -1041,7 +1042,7 @@ var Analysis = {
             }
         }
 
-        spaceCtx.fillStyle = '#F0F0F0';
+        spaceCtx.fillStyle = 'white';
         spaceCtx.fillRect(0, 0, spaceCanvas.width, spaceCanvas.height);
         
         spaceCtx.beginPath()
@@ -1053,8 +1054,8 @@ var Analysis = {
         spaceCtx.fill();
 
         spaceCtx.lineWidth = 45*2.5;
-        spaceCtx.fillStyle = 'white';
-        spaceCtx.strokeStyle = "white";
+        spaceCtx.fillStyle = oppPalePink;
+        spaceCtx.strokeStyle = oppPalePink;
         spaceCtx.lineCap = "round";
         spaceCtx.lineJoin = "round";
         spaceCtx.beginPath()
@@ -1096,7 +1097,7 @@ var Analysis = {
             }
         }
 
-        spaceCtx.fillStyle = "#555";
+        spaceCtx.fillStyle = "#474747";
         spaceCtx.strokeStyle = "#888";
         spaceCtx.font = "64px Arial";
         spaceCtx.textAlign = "center";
