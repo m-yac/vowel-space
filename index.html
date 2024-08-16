@@ -5,14 +5,17 @@
 </head>
 <body>
 
-<!-- <button id="copyDataButton" onclick="formantDataCollection.start();">Collect Data</button> -->
+<button id="copyDataButton" onclick="saveGlobalVars();">Collect Data</button>
 
 <div id="containersDiv" class="containers clickText">
   <div class="canvas-container dimmed">
     <canvas id="spaceCanvas" width="1500" height="1100" ></canvas>
     <canvas id="filtCanvas" width="1500" height="300"></canvas>
     <div class="filtInfo">
-      <div id="formantDiv"></div>
+      <div id="f1Div"></div>
+      <div id="f2Div"></div>
+      <div id="f3Div"></div>
+      <div id="f4Div"></div>
       <!-- <button id="copyPeaksButton" onclick="copyPeakData();">Copy Data</button> -->
     </div>
   </div>
@@ -34,6 +37,7 @@
 <script src="fft.js"></script>
 <script src="kdTree.js"></script>
 <script src="FileSaver.js"></script>
+<script src="globalVars.js"></script>
 <script src="formantData.js"></script>
 <script src="formantDataBoundary.js"></script>
 <script src="analysis.js"></script>

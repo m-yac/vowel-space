@@ -567,7 +567,7 @@ var AudioSystem =
                 AudioSystem.analysisBuffer.push(outArray[j]);
             }
             if (AudioSystem.analysisBuffer.length == Analysis.M) {
-                requestAnimationFrame(Analysis.draw.bind(Analysis, [...AudioSystem.analysisBuffer], AudioSystem.middlePeakOffset));
+                requestAnimationFrame(Analysis.analyze.bind(Analysis, [...AudioSystem.analysisBuffer], AudioSystem.middlePeakOffset));
                 AudioSystem.analysisBuffer = [];
                 AudioSystem.middlePeakOffset = undefined;
             }

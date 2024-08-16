@@ -4,8 +4,28 @@ import matplotlib.ticker as mticker
 from matplotlib.widgets import Slider
 import numpy as np
 
-data = json.load(open(f'formantData.json'))
-formantData = np.array(data['formantData'])
+onlyBoundary = True
+
+formantData = np.array(json.load(open(f'formantData.json')))
+formantDataBoundary = json.load(open(f'formantDataBoundary.json'))
+
+if onlyBoundary:
+    newFormantData = []
+    boundary_c = []
+    for k in range(0, len(formantDataBoundary)):
+        for j in range(0, len(formantDataBoundary[k])):
+            print(k, j, len(formantDataBoundary[k][j]))
+            for i in formantDataBoundary[k][j]:
+                  if True:
+                    newFormantData.append(formantData[i+0])
+                    newFormantData.append(formantData[i+1])
+                    newFormantData.append(formantData[i+2])
+                    newFormantData.append(formantData[i+3])
+                    if k == 0: boundary_c.append((k/2, j, 0))
+                    if k == 1: boundary_c.append((k/2, j, 0))
+                    if k == 2: boundary_c.append((k/2, j, 0))
+    formantData = newFormantData
+
 f1, f2, f3, f4 = formantData[0::4], formantData[1::4], formantData[2::4], formantData[3::4]
 
 f1Min, f1Max = min(f1), max(f1)
@@ -31,14 +51,16 @@ c_by_boundary = [(1.0 if i == 0 or i == 15 else 0.2,
                   1.0 if k == 0 or k == 15 else 0.2)
                   for i in range(0,16) for j in range(0,16) for k in range(0,16)]
 
-pts = ax.scatter(np.log2(f1), np.log2(f2), np.log2(f3), c=np.log2(f4), label='F4')
+if onlyBoundary:
+    pts = ax.scatter(np.log2(f1), np.log2(f2), np.log2(f3), c=boundary_c)
+else:
+    pts = ax.scatter(np.log2(f1), np.log2(f2), np.log2(f3), c=np.log2(f4), label='F4')
+    fig.colorbar(pts).set_label("F4")
 
-fig.colorbar(pts).set_label("F4")
-
-grid_x, grid_y, grid_z = np.meshgrid(np.linspace(np.log2(f3Min), np.log2(f3Max), 16), np.linspace(np.log2(f2Min), np.log2(f2Max), 16), np.linspace(np.log2(f1Max), np.log2(f1Min), 16))
+grid_x, grid_y, grid_z = np.meshgrid(np.linspace(np.log2(f3Min), np.log2(f3Max), 16), np.linspace(np.log2(f2Min), np.log2(f2Max), 16), np.  linspace(np.log2(f1Max), np.log2(f1Min), 16))
 grid_x, grid_y, grid_z = grid_x.flatten(), grid_y.flatten(), grid_z.flatten()
 
-axSlider = fig.add_axes([0.2, 0.1, 0.65, 0.03])   
+axSlider = fig.add_axes([0.2, 0.1, 0.65, 0.03])
 slider = Slider(
     ax=axSlider,
     label='Projection',
