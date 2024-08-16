@@ -124,8 +124,8 @@ function transformCurve(index, bits, lookupTable) {
 
 var oppOrchid = '#968ffa';
 
+var allDiv = document.getElementById("allDiv");
 var containersDiv = document.getElementById("containersDiv");
-var allCanvasContainers = document.querySelectorAll(".canvas-container");
 var freqCanvas = document.getElementById("freqCanvas");
 var freqCtx = freqCanvas.getContext("2d");
 var amplCanvas = document.getElementById("amplCanvas");
@@ -851,13 +851,13 @@ var Analysis = {
         spaceCanvas.addEventListener('mouseup', Analysis.mouseLeave.bind(this));
         spaceCanvas.addEventListener('mouseleave',Analysis.mouseLeave.bind(this));
 
-        containersDiv.addEventListener("mousedown", function () {
+        allDiv.addEventListener("mousedown", function () {
             if (!AudioSystem.started)
             {
                 AudioSystem.started = true;
                 AudioSystem.startSound();
                 // remove class: dimmed
-                allCanvasContainers.forEach((iCanvasContainer) => iCanvasContainer.className = "canvas-container");
+                allDiv.className = "";
                 // remove class: click text
                 containersDiv.className = "containers";
             }
@@ -1033,15 +1033,13 @@ var Analysis = {
             filtCtx.stroke()
         }
 
-        let formant_strings = [];
         for (let i = 0; i < 4; i += 1) {
-            let f = sincFFTPeaks[i] * sampleRate / this.M;
-            formant_strings.push(`F${i+1} = ${f.toFixed(2)}`);
+            let f = sincFFTPeaks[i];// * sampleRate / this.M;
+            const str = `F${i+1} = ${f.toFixed(5)}`;
+            if (str != document.getElementById(`f${i+1}Div`).innerHTML) {
+                document.getElementById(`f${i+1}Div`).innerHTML = str;
+            }
         }
-        document.getElementById("f1Div").innerHTML = formant_strings[0];
-        document.getElementById("f2Div").innerHTML = formant_strings[1];
-        document.getElementById("f3Div").innerHTML = formant_strings[2];
-        document.getElementById("f4Div").innerHTML = formant_strings[3];
 
         spaceCtx.fillStyle = '#F0F0F0';
         spaceCtx.fillRect(0, 0, spaceCanvas.width, spaceCanvas.height);
@@ -1095,6 +1093,42 @@ var Analysis = {
                 y = (1 - maxBound) * spaceCanvas.height;
                 spaceCtx.lineTo(x, y)
                 spaceCtx.stroke()
+            }
+        }
+
+        spaceCtx.fillStyle = "#555";
+        spaceCtx.strokeStyle = "#888";
+        spaceCtx.font = "64px Arial";
+        spaceCtx.textAlign = "center";
+        spaceCtx.textBaseline = 'middle';
+        spaceCtx.lineWidth = 3;
+        const ipa = [["i", 20.40679, 246.43989, [1,2]], ["y", 19.48702, 143.94133, [3]],
+                     ["e", 29.69484, 219.30206, [3,4]], ["ø", 28.80569, 136.17344, [5]],
+                     ["ɛ", 43.57679, 178.94762, [5,6]], ["œ", 42.99057, 127.14479, []],
+                     ["æ", 61.46892, 147.33359, [14]], ["ɐ", 55.63831, 111.10644, []],
+
+                     ["u", 20.87941, 49.04325, [9,10]], ["ɯ", 19.80656, 80.49524, [11]],
+                     ["o", 34.46724, 56.19418, [11,12]], ["ɤ", 30.84479, 84.68748, [13]],
+                     ["ɔ", 50.71282, 68.00439, [13,15]], ["ʌ", 46.66737, 87.79680, []],
+                     ["a", 69.68066, 114.46869, []], ["ɒ", 65.79103, 90.84197, []],
+
+                     ["ɪ", 23.79042, 197.84505, []],
+                     ["ɵ", 23.80616, 108.96843, []],
+                     ["ʊ", 24.78176, 64.58389, []],
+                     ["ə", 36.67890, 106.06422, []]];
+                                                     
+        for (const [str, f1, f2, lines] of ipa) {
+            const x = (1 - toNormalizedFormant(f2, 2)) * spaceCanvas.height;
+            const y = (    toNormalizedFormant(f1, 1)) * spaceCanvas.height;
+            spaceCtx.fillText(str, x, y);
+            for (const i of lines) {
+                spaceCtx.beginPath();
+                const xi = (1 - toNormalizedFormant(ipa[i][2], 2)) * spaceCanvas.height;
+                const yi = (    toNormalizedFormant(ipa[i][1], 1)) * spaceCanvas.height;
+                const r = 0.2;
+                spaceCtx.lineTo(     r  * x + (1 - r) * xi,      r  * y + (1 - r) * yi);
+                spaceCtx.lineTo((1 - r) * x +      r  * xi, (1 - r) * y +      r  * yi);
+                spaceCtx.stroke();
             }
         }
 
