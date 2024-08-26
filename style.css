@@ -63,9 +63,10 @@ canvas {
   margin: auto;
   max-width: 680px;
   background: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 0 200px 50px rgba(255, 255, 255, 0.8);
-  border-radius: 40px;
+  box-shadow: 0 0 24px 50px rgba(255, 255, 255, 0.8);
+  border-radius: 75px;
   line-height: 125%;
+  padding: 1px;
   top: 50%;
   -webkit-transform: translateY(-50%);
   -ms-transform: translateY(-50%);
