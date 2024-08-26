@@ -127,8 +127,12 @@ var boundaryComponents;
 var minF1; var minF2; var minF3; var minF4;
 var maxF1; var maxF2; var maxF3; var maxF4;
 
-var oppOrchid = '#968ffa'; // OKLAB = 96.45% 0.02 284.69
-var oppPalePink = '#e9e9ff';
+    // Orchid = '#DA70D6'; // oklch(70.21% 0.181 328.71)
+var oppOrchid = '#968ffa'; // oklch(70.22% 0.154 284.69)
+var mixOrchid = '#ba80f0'; // oklch(70.22% 0.167 306.48)
+    // palePink = '#FFEEF5'; // oklch(96.45% 0.02   350.54)
+var oppPalePink = '#eff3ff'; // oklch(96.45% 0.0163 273.47)
+var mixPalePink = '#f7f0fc'; // oklch(96.45% 0.018  311.58)
 
 var allDiv = document.getElementById("allDiv");
 var clickTextDiv = document.getElementById("clickTextDiv");

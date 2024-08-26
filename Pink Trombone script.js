@@ -107,9 +107,9 @@ var UI =
         this.mouseTouch = {alive: false, endTime: 0};
         this.mouseDown = false;
         
-        this.aboutButton = makeButton(600-460, 428, 140, 30, "show explanation", false, true);         
-        // this.autoWobbleButton = makeButton(600-460, 392, 140, 30, "pitch wobble", true); 
-        this.alwaysVoiceButton = makeButton(600-460, 464, 140, 30, "always voice", true);
+        this.aboutButton = makeButton(600-450, 428, 150, 30, "show explanation", false, true);         
+        // this.autoWobbleButton = makeButton(600-460, 392, 150, 30, "pitch wobble", true); 
+        this.alwaysVoiceButton = makeButton(600-450, 464, 150, 30, "always voice", true);
 
         tractCanvas.addEventListener('touchstart', UI.startTouches);
         tractCanvas.addEventListener('touchmove', UI.moveTouches);
@@ -141,7 +141,7 @@ var UI =
         var ctx = tractCtx;
         ctx.globalAlpha = 0.8;
         ctx.fillStyle = "white";
-        ctx.rect(0,0,600,600);
+        ctx.rect(0,0,2.5*600,2.5*600);
         ctx.fill();   
     
         this.drawAboutText();
@@ -154,21 +154,21 @@ var UI =
         ctx.fillStyle = "#C070C6";
         ctx.strokeStyle = "#C070C6";
         ctx.font="50px Arial";
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2.5*3;
         ctx.textAlign = "center";
-        // ctx.strokeText("P i n k   T r o m b o n e", 300, 230);
-        // ctx.fillText("P i n k   T r o m b o n e", 300, 230);
+        // ctx.strokeText("P i n k   T r o m b o n e", 2.5*300, 2.5*230);
+        // ctx.fillText("P i n k   T r o m b o n e", 2.5*300, 2.5*230);
         
-        ctx.font="28px Arial";
-        // ctx.fillText("bare-handed  speech synthesis", 300, 330);
+        ctx.font=`${2.5*28}px Arial`;
+        // ctx.fillText("bare-handed  speech synthesis", 2.5*300, 2.5*330);
 
-        ctx.font="20px Arial";        
-        //ctx.fillText("(tap to start)", 300, 380);   
+        ctx.font=`${2.5*20}px Arial`;        
+        //ctx.fillText("(tap to start)", 2.5*300, 2.5*380);   
 
         // if (isFirefox) 
         // {
-        //     ctx.font="20px Arial";        
-        //     ctx.fillText("(sorry - may work poorly with the Firefox browser)", 300, 430);  
+        //     ctx.font=`${2.5*20}px Arial`;        
+        //     ctx.fillText("(sorry - may work poorly with the Firefox browser)", 2.5*300, 2.5*430);  
         // }
     },
 
@@ -179,17 +179,17 @@ var UI =
         var ctx = tractCtx;
         ctx.globalAlpha = 0.85;
         ctx.fillStyle = "white";
-        ctx.rect(0,0,600,600);
+        ctx.rect(0,0,2.5*600,2.5*600);
         ctx.fill();   
         
         ctx.globalAlpha = 1.0;
         ctx.fillStyle = "#C070C6";
         ctx.strokeStyle = "#C070C6";
-        ctx.font="24px Arial";
-        ctx.lineWidth = 2;
+        ctx.font=`${2.5*24}px Arial`;
+        ctx.lineWidth = 2.5*2;
         ctx.textAlign = "center";
         
-        ctx.font = "19px Arial";
+        ctx.font = `${2.5*19}px Arial`;
         ctx.textAlign = "left";
         this.instructionsLine = 0;
         this.write("Sound is generated in the glottis (at the bottom left) then ");
@@ -211,7 +211,7 @@ var UI =
         this.write("(tap anywhere to continue)");
         
         ctx.textAlign = "center";
-        ctx.fillText("[tap here to RESET]", 470, 535);
+        ctx.fillText("[tap here to RESET]", 2.5*470, 2.5*535);
         
         this.instructionsLine = 18.8;
         ctx.textAlign = "left";
@@ -244,7 +244,7 @@ var UI =
     
     write : function(text)
     {
-        tractCtx.fillText(text, 50, 100 + this.instructionsLine*22);
+        tractCtx.fillText(text, 2.5*50, 2.5*(100 + this.instructionsLine*22));
         this.instructionsLine += 1;
         if (text == "") this.instructionsLine -= 0.3;
     },
@@ -653,42 +653,42 @@ var Glottis =
             var y = this.keyboardTop;
             if (this.marks[(i+3)%12]==1)
             {
-                backCtx.lineWidth = 4;
+                backCtx.lineWidth = 2.5*4;
                 backCtx.globalAlpha = 0.4;  
             }
             else             
             {
-                backCtx.lineWidth = 3;
+                backCtx.lineWidth = 2.5*3;
                 backCtx.globalAlpha = 0.2;  
             }
             backCtx.beginPath();
-            backCtx.moveTo(x,y+9);
-            backCtx.lineTo(x, y+this.keyboardHeight*0.4-9);
+            backCtx.moveTo(2.5*x, 2.5*(y+9));
+            backCtx.lineTo(2.5*x, 2.5*(y+this.keyboardHeight*0.4-9));
             backCtx.stroke();
             
-            backCtx.lineWidth = 3;
+            backCtx.lineWidth = 2.5*3;
             backCtx.globalAlpha = 0.15;   
             
             backCtx.beginPath();
-            backCtx.moveTo(x,y+this.keyboardHeight*0.52+6);
-            backCtx.lineTo(x, y+this.keyboardHeight*0.72-6);
+            backCtx.moveTo(2.5*x, 2.5*(y+this.keyboardHeight*0.52+6));
+            backCtx.lineTo(2.5*x, 2.5*(y+this.keyboardHeight*0.72-6));
             backCtx.stroke();  
           
         }
         
         backCtx.fillStyle = "orchid";
-        backCtx.font="17px Arial";
+        backCtx.font=`${2.5*17}px Arial`;
         backCtx.textAlign = "center";
         backCtx.globalAlpha = 0.7; 
-        backCtx.fillText("voicebox control", 300, 490);
-        backCtx.fillText("pitch", 300, 592);
+        backCtx.fillText("voicebox control", 2.5*300, 2.5*490);
+        backCtx.fillText("pitch", 2.5*300, 2.5*592);
         backCtx.globalAlpha = 0.3; 
         backCtx.strokeStyle = "orchid";
         backCtx.fillStyle = "orchid";  
         backCtx.save()
-        backCtx.translate(410, 587);
+        backCtx.translate(2.5*410, 2.5*587);
         this.drawArrow(80, 2, 10);
-        backCtx.translate(-220, 0);
+        backCtx.translate(2.5*(-220), 0);
         backCtx.rotate(Math.PI);
         this.drawArrow(80, 2, 10);
         backCtx.restore(); 
@@ -697,12 +697,12 @@ var Glottis =
     
     drawBar : function(topFactor, bottomFactor, radius)
     {
-        backCtx.lineWidth = radius*2; 
+        backCtx.lineWidth = 2.5*radius*2; 
         backCtx.beginPath();
-        backCtx.moveTo(this.keyboardLeft+radius, this.keyboardTop+topFactor*this.keyboardHeight+radius);
-        backCtx.lineTo(this.keyboardLeft+this.keyboardWidth-radius, this.keyboardTop+topFactor*this.keyboardHeight+radius);
-        backCtx.lineTo(this.keyboardLeft+this.keyboardWidth-radius, this.keyboardTop+bottomFactor*this.keyboardHeight-radius);
-        backCtx.lineTo(this.keyboardLeft+radius, this.keyboardTop+bottomFactor*this.keyboardHeight-radius);
+        backCtx.moveTo(2.5*(this.keyboardLeft+radius), 2.5*(this.keyboardTop+topFactor*this.keyboardHeight+radius));
+        backCtx.lineTo(2.5*(this.keyboardLeft+this.keyboardWidth-radius), 2.5*(this.keyboardTop+topFactor*this.keyboardHeight+radius));
+        backCtx.lineTo(2.5*(this.keyboardLeft+this.keyboardWidth-radius), 2.5*(this.keyboardTop+bottomFactor*this.keyboardHeight-radius));
+        backCtx.lineTo(2.5*(this.keyboardLeft+radius), 2.5*(this.keyboardTop+bottomFactor*this.keyboardHeight-radius));
         backCtx.closePath();
         backCtx.stroke();
         backCtx.fill();
@@ -712,11 +712,11 @@ var Glottis =
     {
         backCtx.lineWidth = 2;
         backCtx.beginPath();
-        backCtx.moveTo(-l, 0);
+        backCtx.moveTo(2.5*(-l), 0);
         backCtx.lineTo(0,0);
-        backCtx.lineTo(0, -ahw);
-        backCtx.lineTo(ahl, 0);
-        backCtx.lineTo(0, ahw);
+        backCtx.lineTo(0, 2.5*(-ahw));
+        backCtx.lineTo(2.5*ahl, 0);
+        backCtx.lineTo(0, 2.5*ahw);
         backCtx.lineTo(0,0);
         backCtx.closePath();
         backCtx.stroke();
@@ -1209,7 +1209,7 @@ var TractUI =
         wobble *= 0.03*Math.sin(2*i-50*time)*i/Tract.n;
         angle += wobble;        
         var r = this.radius - this.scale*d + 100*wobble;
-        this.ctx.moveTo(this.originX+r*Math.cos(angle), this.originY-r*Math.sin(angle));
+        this.ctx.moveTo(2.5*(this.originX+r*Math.cos(angle)), 2.5*(this.originY-r*Math.sin(angle)));
     },
     
     lineTo : function(i,d) 
@@ -1219,7 +1219,7 @@ var TractUI =
         wobble *= 0.03*Math.sin(2*i-50*time)*i/Tract.n;
         angle += wobble;       
         var r = this.radius - this.scale*d + 100*wobble;
-        this.ctx.lineTo(this.originX+r*Math.cos(angle), this.originY-r*Math.sin(angle));
+        this.ctx.lineTo(2.5*(this.originX+r*Math.cos(angle)), 2.5*(this.originY-r*Math.sin(angle)));
     },
     
     drawText : function(i,d,text)
@@ -1227,7 +1227,7 @@ var TractUI =
         var angle = this.angleOffset + i * this.angleScale * Math.PI / (Tract.lipStart-1);
         var r = this.radius - this.scale*d; 
         this.ctx.save();
-        this.ctx.translate(this.originX+r*Math.cos(angle), this.originY-r*Math.sin(angle)+2); //+8);
+        this.ctx.translate(2.5*(this.originX+r*Math.cos(angle)), 2.5*(this.originY-r*Math.sin(angle)+2)); //+8);
         this.ctx.rotate(-angle+Math.PI/2);
         this.ctx.fillText(text, 0, 0);
         this.ctx.restore();
@@ -1238,7 +1238,7 @@ var TractUI =
         var angle = this.angleOffset + i * this.angleScale * Math.PI / (Tract.lipStart-1);
         var r = this.radius - this.scale*d; 
         this.ctx.save();
-        this.ctx.translate(this.originX+r*Math.cos(angle), this.originY-r*Math.sin(angle)+2); //+8);
+        this.ctx.translate(2.5*(this.originX+r*Math.cos(angle)), 2.5*(this.originY-r*Math.sin(angle)+2)); //+8);
         //this.ctx.rotate(angle-Math.PI/2);
         this.ctx.fillText(text, 0, 0);
         this.ctx.restore();
@@ -1249,7 +1249,7 @@ var TractUI =
         var angle = this.angleOffset + i * this.angleScale * Math.PI / (Tract.lipStart-1);
         var r = this.radius - this.scale*d; 
         this.ctx.beginPath();
-        this.ctx.arc(this.originX+r*Math.cos(angle), this.originY-r*Math.sin(angle), radius, 0, 2*Math.PI);
+        this.ctx.arc(2.5*(this.originX+r*Math.cos(angle)), 2.5*(this.originY-r*Math.sin(angle)), 2.5*radius, 0, 2*Math.PI);
         this.ctx.fill();
     },
         
@@ -1268,7 +1268,7 @@ var TractUI =
     
     draw : function()
     {
-        this.ctx.clearRect(0, 0, tractCanvas.width, tractCanvas.height);
+        this.ctx.clearRect(0, 0, 2.5*tractCanvas.width, 2.5*tractCanvas.height);
         this.ctx.lineCap = 'round';        
         this.ctx.lineJoin = 'round';  
         
@@ -1281,7 +1281,7 @@ var TractUI =
         
         //first draw fill
         this.ctx.beginPath();        
-        this.ctx.lineWidth = 2;
+        this.ctx.lineWidth = 2.5*2;
         this.ctx.strokeStyle = this.fillColour;
         this.ctx.fillStyle = this.fillColour;
         this.moveTo(1,0);
@@ -1305,7 +1305,7 @@ var TractUI =
         
         //velum
         this.ctx.beginPath();
-        this.ctx.lineWidth = 2;
+        this.ctx.lineWidth = 2.5*2;
         this.ctx.strokeStyle = this.fillColour;
         this.ctx.fillStyle = this.fillColour;
         this.moveTo(Tract.noseStart-2, 0);
@@ -1320,13 +1320,13 @@ var TractUI =
         
         //white text
         this.ctx.fillStyle = "white";
-        this.ctx.font="20px Arial";
+        this.ctx.font=`${2.5*20}px Arial`;
         this.ctx.textAlign = "center";
         this.ctx.globalAlpha = 1.0;
         this.drawText(Tract.n*0.10, 0.425, "throat");         
         this.drawText(Tract.n*0.71, -1.8, "nasal");
         this.drawText(Tract.n*0.71, -1.3, "cavity");
-        this.ctx.font="22px Arial";        
+        this.ctx.font=`${2.5*22}px Arial`;        
         this.drawText(Tract.n*0.75, 0.9, "oral");    
         this.drawText(Tract.n*0.65, 0.9, "cavity");        
   
@@ -1335,7 +1335,7 @@ var TractUI =
         
         //then draw lines
         this.ctx.beginPath();        
-        this.ctx.lineWidth = 5;
+        this.ctx.lineWidth = 2.5*5;
         this.ctx.strokeStyle = this.lineColour;
         this.ctx.lineJoin = 'round';
         this.ctx.lineCap = 'round';          
@@ -1349,7 +1349,7 @@ var TractUI =
         
         //for nose
         this.ctx.beginPath();        
-        this.ctx.lineWidth = 5;
+        this.ctx.lineWidth = 2.5*5;
         this.ctx.strokeStyle = this.lineColour;
         this.ctx.lineJoin = 'round';  
         this.moveTo(Tract.noseStart, -this.noseOffset);
@@ -1371,7 +1371,7 @@ var TractUI =
         this.ctx.globalAlpha=1.0;        
         this.ctx.fillStyle = "black";
         this.ctx.textAlign = "right";
-        this.ctx.fillText(UI.debugText, 20, 20);
+        this.ctx.fillText(UI.debugText, 2.5*20, 2.5*20);
         // this.drawPositions();
     },
     
@@ -1382,7 +1382,7 @@ var TractUI =
         
         //text
         this.ctx.fillStyle = "orchid";
-        this.ctx.font="20px Arial";
+        this.ctx.font=`${2.5*20}px Arial`;
         this.ctx.textAlign = "center";
         this.ctx.globalAlpha = 0.7;
         this.drawText(Tract.n*0.54, -0.28, "soft");
@@ -1391,7 +1391,7 @@ var TractUI =
         this.drawText(Tract.n*0.80, -0.28, "palate");
         this.drawText(Tract.n*0.95, -0.28, "lip ");
         
-        this.ctx.font="17px Arial";        
+        this.ctx.font=`${2.5*17}px Arial`;        
         this.drawTextStraight(Tract.n*0.18, 3, "tongue control  ");   
         this.ctx.textAlign = "right";
         this.drawText(this.lipIndex + 3, this.outerLipControlRadius, "lip control"); 
@@ -1400,7 +1400,7 @@ var TractUI =
         this.drawText(Tract.n*1.03, 0.51, "fricatives");
         // this.drawTextStraight(1.5, +0.8, "glottis")
         this.ctx.strokeStyle = "orchid";
-        this.ctx.lineWidth = 2;
+        this.ctx.lineWidth = 2.5*2;
         this.ctx.beginPath();
         this.moveTo(Tract.n*1.03, 0); this.lineTo(Tract.n*1.07, 0); 
         this.moveTo(Tract.n*1.03, -this.noseOffset); this.lineTo(Tract.n*1.07,  -this.noseOffset); 
@@ -1413,7 +1413,7 @@ var TractUI =
     drawPositions : function()
     {
         this.ctx.fillStyle = "orchid";
-        this.ctx.font="24px Arial";
+        this.ctx.font=`${2.5*24}px Arial`;
         this.ctx.textAlign = "right";
         this.ctx.globalAlpha = 0.6;
         var a = 2;
@@ -1479,7 +1479,7 @@ var TractUI =
         for (var i=2; i<Tract.n-1; i++)
         {
             this.ctx.beginPath();
-            this.ctx.lineWidth = Math.sqrt(Tract.maxAmplitude[i])*3;
+            this.ctx.lineWidth = 2.5*Math.sqrt(Tract.maxAmplitude[i])*3;
             this.moveTo(i, 0);
             this.lineTo(i, Tract.diameter[i]);
             this.ctx.stroke();
@@ -1487,7 +1487,7 @@ var TractUI =
         for (var i=1; i<Tract.noseLength-1; i++)
         {
             this.ctx.beginPath();
-            this.ctx.lineWidth = Math.sqrt(Tract.noseMaxAmplitude[i]) * 3;
+            this.ctx.lineWidth = 2.5*Math.sqrt(Tract.noseMaxAmplitude[i]) * 3;
             this.moveTo(i+Tract.noseStart, -this.noseOffset);
             this.lineTo(i+Tract.noseStart, -this.noseOffset - Tract.noseDiameter[i]*0.9);
             this.ctx.stroke();
@@ -1503,7 +1503,7 @@ var TractUI =
         this.ctx.fillStyle = palePink;
         this.ctx.globalAlpha = 1.0;
         this.ctx.beginPath();
-        this.ctx.lineWidth = 45;
+        this.ctx.lineWidth = 2.5*45;
         
         //outline
         this.moveTo(this.tongueLowerIndexBound, this.innerTongueControlRadius);
@@ -1536,11 +1536,11 @@ var TractUI =
         var r = this.radius - this.scale*(this.tongueDiameter);
         var x = this.originX+r*Math.cos(angle);
         var y = this.originY-r*Math.sin(angle);
-        this.ctx.lineWidth = 4;
+        this.ctx.lineWidth = 2.5*4;
         this.ctx.strokeStyle = "orchid";
         this.ctx.globalAlpha = 0.7;
         this.ctx.beginPath();
-        this.ctx.arc(x,y, 18, 0, 2*Math.PI);
+        this.ctx.arc(2.5*x, 2.5*y, 2.5*18, 0, 2*Math.PI);
         this.ctx.stroke();        
         this.ctx.globalAlpha = 0.15;
         this.ctx.fill();
@@ -1557,7 +1557,7 @@ var TractUI =
         this.ctx.fillStyle = palePink;
         this.ctx.globalAlpha = 1.0;
         this.ctx.beginPath();
-        this.ctx.lineWidth = 45;
+        this.ctx.lineWidth = 2.5*45;
         
         //outline
         this.moveTo(this.lipIndex, this.innerLipControlRadius);
@@ -1583,11 +1583,11 @@ var TractUI =
         var r = this.radius - this.scale*(this.lipDiameter);
         var x = this.originX+r*Math.cos(angle);
         var y = this.originY-r*Math.sin(angle);
-        this.ctx.lineWidth = 4;
+        this.ctx.lineWidth = 2.5*4;
         this.ctx.strokeStyle = "orchid";
         this.ctx.globalAlpha = 0.7;
         this.ctx.beginPath();
-        this.ctx.arc(x,y, 18, 0, 2*Math.PI);
+        this.ctx.arc(2.5*x, 2.5*y, 2.5*18, 0, 2*Math.PI);
         this.ctx.stroke();        
         this.ctx.globalAlpha = 0.15;
         this.ctx.fill();
@@ -1602,14 +1602,14 @@ var TractUI =
         var h=15;
         if (Glottis.x)
         {
-            this.ctx.lineWidth = 4;
+            this.ctx.lineWidth = 2.5*4;
             this.ctx.strokeStyle = "orchid";
             this.ctx.globalAlpha = 0.7;
             this.ctx.beginPath();
-            this.ctx.moveTo(Glottis.x+w, Glottis.y-h);
-            this.ctx.lineTo(Glottis.x-w, Glottis.y-h);
-            this.ctx.lineTo(Glottis.x-w, Glottis.y+h);
-            this.ctx.lineTo(Glottis.x+w, Glottis.y+h);                    
+            this.ctx.moveTo(2.5*(Glottis.x+w), 2.5*(Glottis.y-h));
+            this.ctx.lineTo(2.5*(Glottis.x-w), 2.5*(Glottis.y-h));
+            this.ctx.lineTo(2.5*(Glottis.x-w), 2.5*(Glottis.y+h));
+            this.ctx.lineTo(2.5*(Glottis.x+w), 2.5*(Glottis.y+h));                    
             this.ctx.closePath();            
             this.ctx.stroke();    
             this.ctx.globalAlpha = 0.15;
@@ -1749,28 +1749,28 @@ function makeButton(x, y, width, height, text, switchedOn, opposite)
     button.draw = function(ctx)
     {
         var radius = 10;
-        ctx.strokeStyle = opposite ? oppPalePink : palePink;
-        ctx.fillStyle = opposite ? oppPalePink : palePink;        
+        ctx.strokeStyle = opposite ? mixPalePink : palePink;
+        ctx.fillStyle = opposite ? mixPalePink : palePink;        
         ctx.globalAlpha = 1.0;     
         ctx.lineCap = 'round';        
         ctx.lineJoin = 'round';        
-        ctx.lineWidth = 2*radius;     
+        ctx.lineWidth = 2.5*2*radius;     
         
         ctx.beginPath();
-        ctx.lineTo(this.x-this.width+radius, this.y+this.height-radius);
-        ctx.lineTo(this.x-radius, this.y+this.height-radius);
-        ctx.moveTo(this.x-radius, this.y+radius);
-        ctx.lineTo(this.x-this.width+radius, this.y+radius);
+        ctx.lineTo(2.5*(this.x-this.width+radius), 2.5*(this.y+this.height-radius));
+        ctx.lineTo(2.5*(this.x-radius), 2.5*(this.y+this.height-radius));
+        ctx.moveTo(2.5*(this.x-radius), 2.5*(this.y+radius));
+        ctx.lineTo(2.5*(this.x-this.width+radius), 2.5*(this.y+radius));
         ctx.closePath();
         ctx.stroke();
         ctx.fill();
         
-        ctx.font="16px Arial";
+        ctx.font=`${2.5*16}px Arial`;
         ctx.textAlign = "center";
         if (this.switchedOn) 
         {
-            ctx.fillStyle = opposite ? oppOrchid : "orchid";        
-            ctx.globalAlpha = 0.6;
+            ctx.fillStyle = opposite ? mixOrchid : "orchid";        
+            ctx.globalAlpha = opposite ? 0.875 : 0.6;
         }
         else        
         {
@@ -1782,7 +1782,7 @@ function makeButton(x, y, width, height, text, switchedOn, opposite)
     
     button.drawText = function(ctx)
     {
-        ctx.fillText(this.text, this.x-this.width/2, this.y+this.height/2+6);
+        ctx.fillText(this.text, 2.5*(this.x-this.width/2), 2.5*(this.y+this.height/2+6));
     };
     
     button.handleTouchStart = function(touch)
