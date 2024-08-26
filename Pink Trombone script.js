@@ -108,8 +108,8 @@ var UI =
         this.mouseDown = false;
         
         // this.aboutButton = null;makeButton(600-460, 392, 140, 30, "about...", true);         
-        this.alwaysVoiceButton = makeButton(600-460, 428, 140, 30, "always voice", true);
-        this.autoWobbleButton = makeButton(600-460, 464, 140, 30, "pitch wobble", true); 
+        this.alwaysVoiceButton = makeButton(600-460, 464 /*428*/, 140, 30, "always voice", true);
+        // this.autoWobbleButton = makeButton(600-460, 464, 140, 30, "pitch wobble", true); 
 
         tractCanvas.addEventListener('touchstart', UI.startTouches);
         tractCanvas.addEventListener('touchmove', UI.moveTouches);
@@ -130,7 +130,7 @@ var UI =
     draw : function()
     {
         this.alwaysVoiceButton.draw(tractCtx);
-        this.autoWobbleButton.draw(tractCtx);
+        // this.autoWobbleButton.draw(tractCtx);
         // this.aboutButton.draw(tractCtx);
         if (this.inAboutScreen) this.drawAboutScreen();
         else if (this.inInstructionsScreen) this.drawInstructionsScreen();
@@ -253,8 +253,8 @@ var UI =
     {
         this.alwaysVoiceButton.handleTouchStart(touch);
         alwaysVoice = this.alwaysVoiceButton.switchedOn;
-        this.autoWobbleButton.handleTouchStart(touch);
-        autoWobble = this.autoWobbleButton.switchedOn;
+        // this.autoWobbleButton.handleTouchStart(touch);
+        // autoWobble = this.autoWobbleButton.switchedOn;
         // this.aboutButton.handleTouchStart(touch);
 
     },

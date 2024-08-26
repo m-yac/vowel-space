@@ -1003,7 +1003,7 @@ var Analysis = {
         normSincFFTArray = truncSincFFTArray.map((x) => x / truncSincFFTMax);
         for (let i = 0; i < this.M/4; i += 1) {
             const x = Math.log2(1 + 4 * i / this.M) * filtCanvas.width
-            const y = filtCanvas.height * (1 - normSincFFTArray[i]);
+            const y = filtCanvas.height * (1 - 0.8 * normSincFFTArray[i]);
             filtCtx.lineTo(x, y)
         }
         filtCtx.lineTo(filtCanvas.width+1, filtCanvas.height+1);
@@ -1039,13 +1039,18 @@ var Analysis = {
         sincFFTPeaks = sincFFTPeaks.map((x) => x[0]);
         // console.log(`${sincFFTPeaks[0]} ${sincFFTPeaks[1]} ${sincFFTPeaks[2]} ${sincFFTPeaks[3]}`)
 
+        filtCtx.font = "24px Arial";
+        filtCtx.fillStyle = "#AAA";
+        filtCtx.textAlign = "center";
+        filtCtx.textBaseline = 'top';
         for (let j = 0; j < sincFFTPeaks.length; j += 1) {
             const i = sincFFTPeaks[j];
             const x = Math.log2(1 + 4 * i / this.M) * filtCanvas.width
             filtCtx.beginPath()
-            filtCtx.moveTo(x, 0)
+            filtCtx.moveTo(x, filtCanvas.height * 0.2)
             filtCtx.lineTo(x, filtCanvas.height)
             filtCtx.stroke()
+            filtCtx.fillText(`F${j+1}`, x, filtCanvas.height * 0.1);
         }
 
         for (let i = 0; i < 4; i += 1) {
@@ -1145,8 +1150,8 @@ var Analysis = {
         // draw dashed lines
         spaceCtx.lineWidth = 2;
         spaceCtx.setLineDash([10,10]);
-        spaceCtx.fillStyle = "#888";
-        spaceCtx.strokeStyle = "#888";
+        spaceCtx.fillStyle = "#AAA";
+        spaceCtx.strokeStyle = "#AAA";
         spaceCtx.font = "32px Arial";
         spaceCtx.globalCompositeOperation = "color-burn";
         const f1_tick = 100;
