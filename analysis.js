@@ -954,6 +954,9 @@ var Analysis = {
 
     draw : function()
     {
+        const freq_dB_axis = 100;
+        const freq_Hz_axis = freqCanvas.height - 70;
+
         amplCtx.clearRect(0, 0, amplCanvas.width, amplCanvas.height);
         amplCtx.lineWidth = 3;
         amplCtx.strokeStyle = "orchid";
@@ -961,52 +964,133 @@ var Analysis = {
         const iOff = this.M/4 - middlePeakOffset;
         for (let i = 0; i < this.M/2; i += 1) {
             const x = 2 * i / this.M * amplCanvas.width
-            const y = (0.5 - 1.25 * outArray[iOff + i]) * amplCanvas.height;
+            const y = (0.5 - 1.25 * outArray[iOff + i]) * freq_Hz_axis;
             amplCtx.lineTo(x, y)
         }
         amplCtx.stroke()
 
+        // draw axes
+        amplCtx.fillStyle = "black";
+        amplCtx.strokeStyle = 'black';
+        amplCtx.beginPath()
+        amplCtx.lineTo(0, freq_Hz_axis);
+        amplCtx.lineTo(amplCanvas.width, freq_Hz_axis);
+        amplCtx.stroke()
+
+        // draw axes labels
+        amplCtx.font = "24px Arial";
+        amplCtx.textAlign = "center";
+        amplCtx.textBaseline = 'bottom';
+        amplCtx.fillText("Amplitude vs. Time (ms)", amplCanvas.width / 2, amplCanvas.height);
+        amplCtx.textBaseline = 'top';
+        for (let ms = -9; ms <= 9; ms += 1) {
+            const x = (0.5 + ms / 20) * amplCanvas.width;
+            const length = ms == 0 ? 14 : ms % 5 == 0 ? 10 : 6;
+            amplCtx.beginPath()
+            amplCtx.lineTo(x, freq_Hz_axis + length);
+            amplCtx.lineTo(x, freq_Hz_axis - length);
+            amplCtx.stroke()
+            if (ms % 5 == 0) {
+                const str = ms > 0 ? "+" : "";
+                amplCtx.fillText(`${str}${ms}`, x, freq_Hz_axis + length + 4);
+            }
+        }
+
         freqCtx.clearRect(0, 0, freqCanvas.width, freqCanvas.height);
         freqCtx.lineWidth = 3;
         freqCtx.strokeStyle = oppOrchid;
+        freqCtx.setLineDash([10,10]);
         freqCtx.beginPath()
-        for (let i = 0; i < this.M/4; i += 1) {
-            const x = Math.log2(1 + 4 * i / this.M) * freqCanvas.width
+        for (let i = 0; i < this.M/8 + 8; i += 1) {
+            const x = freq_dB_axis + 8 * i / this.M * freqCanvas.width
             const h = Math.log2(Math.max(1e-10, pulseFFTArray[i])) / 18;
             const y = (0.5 - Math.clamp(h, -0.5, 0.5)) * freqCanvas.height;
             freqCtx.lineTo(x, y)
         }
         freqCtx.stroke()
+        freqCtx.setLineDash([]);
         freqCtx.lineWidth = 3;
         freqCtx.strokeStyle = "orchid";
         freqCtx.fillStyle = palePink;
         freqCtx.beginPath()
-        for (let i = 0; i < this.M/4; i += 1) {
-            const x = Math.log2(1 + 4 * i / this.M) * freqCanvas.width;
+        for (let i = 0; i < this.M/8 + 8; i += 1) {
+            const x = freq_dB_axis + 8 * i / this.M * freqCanvas.width;
             const h = Math.log2(Math.max(1e-10, outFFTArray[i])) / 18;
             const y = (0.5 - Math.clamp(h, -0.5, 0.5)) * freqCanvas.height;
             freqCtx.lineTo(x, y)
         }
         freqCtx.lineTo(freqCanvas.width+1, freqCanvas.height+1);
-        freqCtx.lineTo(-1, freqCanvas.height+1);
+        freqCtx.lineTo(freq_dB_axis, freqCanvas.height+1);
         freqCtx.fill()
         freqCtx.stroke()
+
+        // draw axes
+        freqCtx.fillStyle = 'white';
+        freqCtx.fillRect(0, freq_Hz_axis, freqCanvas.width, freqCanvas.height);
+        freqCtx.fillStyle = "black";
+        freqCtx.strokeStyle = 'black';
+        freqCtx.beginPath()
+        freqCtx.lineTo(freqCanvas.width, freq_Hz_axis);
+        freqCtx.lineTo(freq_dB_axis, freq_Hz_axis);
+        freqCtx.lineTo(freq_dB_axis, 0);
+        freqCtx.stroke()
+
+        // draw axes labels
+        freqCtx.font = "24px Arial";
+        freqCtx.textAlign = "center";
+        freqCtx.textBaseline = 'bottom';
+        freqCtx.fillText("Frequency (Hz)", (freq_dB_axis + freqCanvas.width) / 2, freqCanvas.height);
+        freqCtx.textBaseline = 'top';
+        for (let hz = 100; hz < 10000; hz += 100) {
+            const x = freq_dB_axis + 8 * hz / sampleRate * freqCanvas.width;
+            const length = hz % 1000 == 0 ? 14 : hz % 500 == 0 ? 10 : 6;
+            freqCtx.beginPath()
+            freqCtx.lineTo(x, freq_Hz_axis + length);
+            freqCtx.lineTo(x, freq_Hz_axis - length);
+            freqCtx.stroke()
+            if (hz % 1000 == 0) {
+                freqCtx.fillText(`${hz}`, x, freq_Hz_axis + length);
+            }
+        }
+        freqCtx.textBaseline = 'bottom';
+        freqCtx.save();
+        freqCtx.translate(freq_dB_axis / 2, freq_Hz_axis / 2);
+        freqCtx.rotate(-Math.PI/2);
+        freqCtx.fillText("Amplitude (dB)", 0, 0);
+        freqCtx.restore();
+        freqCtx.textAlign = "right";
+        freqCtx.textBaseline = 'middle';
+        for (let db = -40; db < 55; db += 5) {
+            const v = Math.pow(10, db / 20);
+            if (v < 1e-10) { continue; }
+            const h = Math.log2(v) / 18;
+            if (h < -0.5 || h > 0.5) { continue; }
+            const y = (0.5 - h) * freqCanvas.height;
+            const length = db % 20 == 0 ? 10 : 6;
+            freqCtx.beginPath()
+            freqCtx.lineTo(freq_dB_axis + length, y);
+            freqCtx.lineTo(freq_dB_axis - length, y);
+            freqCtx.stroke()
+            if (db % 20 == 0) {
+                freqCtx.fillText(`${db}`, freq_dB_axis - length - 4, y + 2);
+            }
+        }
 
         filtCtx.clearRect(0, 0, filtCanvas.width, filtCanvas.height);
         filtCtx.lineWidth = 3;
         filtCtx.strokeStyle = oppOrchid;
         filtCtx.fillStyle = oppOrchid;
         filtCtx.beginPath()
-        filtCtx.lineTo(-1, filtCanvas.height+1);
         const truncSincFFTArray = sincFFTArray.slice(0, this.M/4)
         const truncSincFFTMax = Math.max(...truncSincFFTArray);
         normSincFFTArray = truncSincFFTArray.map((x) => x / truncSincFFTMax);
-        for (let i = 0; i < this.M/4; i += 1) {
-            const x = Math.log2(1 + 4 * i / this.M) * filtCanvas.width
+        for (let i = 0; i < this.M/8 + 8; i += 1) {
+            const x = freq_dB_axis + 8 * i / this.M * filtCanvas.width
             const y = filtCanvas.height * (1 - 0.8 * normSincFFTArray[i]);
             filtCtx.lineTo(x, y)
         }
-        filtCtx.lineTo(filtCanvas.width+1, filtCanvas.height+1);
+        filtCtx.lineTo(filtCanvas.width+1, filtCanvas.height+2);
+        filtCtx.lineTo(freq_dB_axis, filtCanvas.height+2);
         filtCtx.stroke()
         filtCtx.globalAlpha = 0.15;
         filtCtx.fill()
@@ -1035,7 +1119,7 @@ var Analysis = {
                 sincFFTPeaks[2-1] = [x - r/2, r, dy_range];
                 sincFFTPeaks[3-1] = [x + r/2, r, dy_range];
             }
-        } 
+        }
         sincFFTPeaks = sincFFTPeaks.map((x) => x[0]);
         // console.log(`${sincFFTPeaks[0]} ${sincFFTPeaks[1]} ${sincFFTPeaks[2]} ${sincFFTPeaks[3]}`)
 
@@ -1045,13 +1129,36 @@ var Analysis = {
         filtCtx.textBaseline = 'top';
         for (let j = 0; j < sincFFTPeaks.length; j += 1) {
             const i = sincFFTPeaks[j];
-            const x = Math.log2(1 + 4 * i / this.M) * filtCanvas.width
+            const x = freq_dB_axis + 8 * i / this.M * filtCanvas.width
             filtCtx.beginPath()
             filtCtx.moveTo(x, filtCanvas.height * 0.2)
             filtCtx.lineTo(x, filtCanvas.height)
             filtCtx.stroke()
             filtCtx.fillText(`F${j+1}`, x, filtCanvas.height * 0.1);
         }
+
+        filtCtx.lineWidth = 2;
+        filtCtx.strokeStyle = "#AAA";
+        filtCtx.beginPath()
+        filtCtx.lineTo(freq_dB_axis, filtCanvas.height * 0.1);
+        filtCtx.lineTo(freq_dB_axis, filtCanvas.height);
+        filtCtx.stroke()
+        for (let i = 0.0; i <= 1.0; i += 0.1) {
+            const y = filtCanvas.height * (i * 0.1 + (1 - i));
+            filtCtx.beginPath()
+            filtCtx.lineTo(freq_dB_axis - 6, y);
+            filtCtx.lineTo(freq_dB_axis + 6, y);
+            filtCtx.stroke()
+        }
+        filtCtx.font = "32px Arial";
+        filtCtx.textAlign = "center";
+        filtCtx.textBaseline = 'middle';
+        filtCtx.save();
+        filtCtx.translate(freq_dB_axis / 2, filtCanvas.height * 0.1 + 0.9 * filtCanvas.height / 2);
+        filtCtx.rotate(-Math.PI/2);
+        filtCtx.fillText("Formant Intensity (%)", 0, 0);
+        filtCtx.restore();
+
 
         for (let i = 0; i < 4; i += 1) {
             let f = sincFFTPeaks[i] * sampleRate / this.M;
