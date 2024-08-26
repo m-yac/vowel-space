@@ -7,8 +7,8 @@
 
 <!-- <button id="copyDataButton" onclick="saveGlobalVars();">Collect Data</button> -->
 
-<div id="allDiv" class="dimmed">
-<div id="containersDiv" class="containers clickText">
+<div id="allDiv">
+<div id="containersDiv" class="containers">
   <div class="canvas-container">
     <canvas id="spaceCanvas" width="1500" height="1100" ></canvas>
     <canvas id="filtCanvas" width="1500" height="350"></canvas>
@@ -33,6 +33,20 @@
     <canvas id="amplCanvas" width="1500" height="600" ></canvas>
   </div>
 </div>
+<div id="clickTextDiv" class="clickText"><div class="clickTextInner">
+  <h1>Interactive Vowel Space</h1>
+  <p>After reading Geoff Lindsey's <a id="aLindsey" href="https://www.englishspeechservices.com/blog/the-vowel-space/">introduction to the vowel space</a>, I wished that I could hear what it would sound like to move around the vowel space in real time. This page lets you do just that!</p>
+  <ul>
+  <li style="list-style-type: '◳'"><p>In the <b>upper right</b> is a modified version of Neil Thapen's <a href="https://www.imaginary.org/program/pink-trombone">Pink Trombone</a>, a vocal tract simulator generating <b>real time audio</b> based on factors like tongue position, lip position, throat constrictions, pitch, and intensity. Everything is click-able!</p></li>
+  <li style="list-style-type: '◲'"><p>In the <b>lower right</b> is the resulting <b>sound wave</b> that you hear (turn on your speakers!).</p></li>
+  <li style="list-style-type: '◱'"><p>In the <b>lower left</b> is the sound wave's <a href="https://newt.phys.unsw.edu.au/jw/sound.spectrum.html">spectrum</a>, a representation of the different frequences that make it up. The <b>pitch</b> determines the <b>spacing</b> of the spikes, and the <b>vocal tract</b> determines their <b>height</b>. The dashed blue lines shows the predicted heights based on the vocal tract shape.</p>
+  <p>Notice that there are a few gentle <b>peaks</b> in the heights of the spikes that don't change with pitch. These peaks are <a href="https://en.wikipedia.org/wiki/Formant">formants</a>, and they're what define vowels! The formants are numbered from left to right: F1, F2, F3, and so on.</p></li>
+  <li style="list-style-type: '◰'"><p>In the <b>upper left</b> are a two different ways to visualize formants. On the bottom is a plot of the predicted intensity of the spectral peaks based on the shape of the vocal tract. The lines are where my peak finding algorithm thinks it's found a formant.</p>
+  <p>On the top is the main event: <b>the vowel space</b>. This is a plot of the first formant (F1) against the second formant (F2). As the values of these first two formants change relative to each other, the circle on this plot will move – <i>and</i> – if you move the circle, the simulator will update accordingly! The letters are the <a href="https://en.wikipedia.org/wiki/Vowel">IPA symbols</a> for the different standard vowels.</p></li>
+  <p></p>
+  </ul>
+  <h4>Click anywhere to <span id="startResumeSpan">start</span>!</h4>
+</div></div>
 </div>
 
 

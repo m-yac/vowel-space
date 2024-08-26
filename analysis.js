@@ -131,7 +131,9 @@ var oppOrchid = '#968ffa'; // OKLAB = 96.45% 0.02 284.69
 var oppPalePink = '#e9e9ff';
 
 var allDiv = document.getElementById("allDiv");
-var containersDiv = document.getElementById("containersDiv");
+var clickTextDiv = document.getElementById("clickTextDiv");
+var clickTextLinks = [...document.querySelectorAll('a')];
+var startResumeSpan = document.getElementById("startResumeSpan");
 var freqCanvas = document.getElementById("freqCanvas");
 var freqCtx = freqCanvas.getContext("2d");
 var amplCanvas = document.getElementById("amplCanvas");
@@ -858,6 +860,7 @@ const f3_region_end = f3_region_width - 170;
 
 var Analysis = {
     M: 4096,
+    aboutButtonSwitchedOn: false,
 
     init : function()
     {
@@ -866,15 +869,24 @@ var Analysis = {
         spaceCanvas.addEventListener('mouseup', Analysis.mouseLeave.bind(this));
         spaceCanvas.addEventListener('mouseleave',Analysis.mouseLeave.bind(this));
 
-        allDiv.addEventListener("mousedown", function () {
-            if (!AudioSystem.started)
+        allDiv.addEventListener("mousedown", function (event) {
+            if (UI.aboutButton.switchedOn != Analysis.aboutButtonSwitchedOn) {
+                Analysis.aboutButtonSwitchedOn = UI.aboutButton.switchedOn;
+            }
+            else if (!UI.aboutButton.switchedOn && clickTextLinks.every((a) => !a.contains(event.target)))
             {
-                AudioSystem.started = true;
-                AudioSystem.startSound();
-                // remove class: dimmed
-                allDiv.className = "";
-                // remove class: click text
-                containersDiv.className = "containers";
+                UI.aboutButton.switchedOn = true;
+                Analysis.aboutButtonSwitchedOn = true;
+                if (!AudioSystem.started) {
+                    AudioSystem.started = true;
+                    AudioSystem.startSound();
+                    startResumeSpan.innerHTML = "resume";
+                }
+                else {
+                    AudioSystem.unmute();
+                }
+                // change class: clickText -> hidden
+                clickTextDiv.className = "hidden";
             }
         });
     },
@@ -1115,7 +1127,6 @@ var Analysis = {
                 sincFFTPeaks.splice(2-1, 0, sincFFTPeaks[2-1]);
                 let [x, x_range, dy_range] = sincFFTPeaks[2-1];
                 const r = Math.pow(r1, x_range / r0);
-                didIt = x_range;
                 sincFFTPeaks[2-1] = [x - r/2, r, dy_range];
                 sincFFTPeaks[3-1] = [x + r/2, r, dy_range];
             }

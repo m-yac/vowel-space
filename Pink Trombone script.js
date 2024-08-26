@@ -107,9 +107,9 @@ var UI =
         this.mouseTouch = {alive: false, endTime: 0};
         this.mouseDown = false;
         
-        // this.aboutButton = null;makeButton(600-460, 392, 140, 30, "about...", true);         
-        this.alwaysVoiceButton = makeButton(600-460, 464 /*428*/, 140, 30, "always voice", true);
-        // this.autoWobbleButton = makeButton(600-460, 464, 140, 30, "pitch wobble", true); 
+        this.aboutButton = makeButton(600-460, 428, 140, 30, "show explanation", false, true);         
+        // this.autoWobbleButton = makeButton(600-460, 392, 140, 30, "pitch wobble", true); 
+        this.alwaysVoiceButton = makeButton(600-460, 464, 140, 30, "always voice", true);
 
         tractCanvas.addEventListener('touchstart', UI.startTouches);
         tractCanvas.addEventListener('touchmove', UI.moveTouches);
@@ -129,9 +129,9 @@ var UI =
     
     draw : function()
     {
-        this.alwaysVoiceButton.draw(tractCtx);
+        this.aboutButton.draw(tractCtx);
         // this.autoWobbleButton.draw(tractCtx);
-        // this.aboutButton.draw(tractCtx);
+        this.alwaysVoiceButton.draw(tractCtx);
         if (this.inAboutScreen) this.drawAboutScreen();
         else if (this.inInstructionsScreen) this.drawInstructionsScreen();
     },
@@ -255,8 +255,12 @@ var UI =
         alwaysVoice = this.alwaysVoiceButton.switchedOn;
         // this.autoWobbleButton.handleTouchStart(touch);
         // autoWobble = this.autoWobbleButton.switchedOn;
-        // this.aboutButton.handleTouchStart(touch);
-
+        this.aboutButton.handleTouchStart(touch);
+        if (!this.aboutButton.switchedOn) {
+            // change class: hidden -> clickText
+            clickTextDiv.className = "clickText";
+            AudioSystem.mute();
+        }
     },
     
     startTouches : function(event)
@@ -1732,7 +1736,7 @@ var TractUI =
 }
 
 
-function makeButton(x, y, width, height, text, switchedOn)
+function makeButton(x, y, width, height, text, switchedOn, opposite)
 {
     button = {};
     button.x = x;
@@ -1745,8 +1749,8 @@ function makeButton(x, y, width, height, text, switchedOn)
     button.draw = function(ctx)
     {
         var radius = 10;
-        ctx.strokeStyle = palePink;
-        ctx.fillStyle = palePink;        
+        ctx.strokeStyle = opposite ? oppPalePink : palePink;
+        ctx.fillStyle = opposite ? oppPalePink : palePink;        
         ctx.globalAlpha = 1.0;     
         ctx.lineCap = 'round';        
         ctx.lineJoin = 'round';        
@@ -1765,7 +1769,7 @@ function makeButton(x, y, width, height, text, switchedOn)
         ctx.textAlign = "center";
         if (this.switchedOn) 
         {
-            ctx.fillStyle = "orchid";        
+            ctx.fillStyle = opposite ? oppOrchid : "orchid";        
             ctx.globalAlpha = 0.6;
         }
         else        
