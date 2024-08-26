@@ -864,6 +864,7 @@ const f3_region_end = f3_region_width - 170;
 
 var Analysis = {
     M: 4096,
+    mouseDown: false,
     aboutButtonSwitchedOn: false,
 
     init : function()
@@ -911,6 +912,9 @@ var Analysis = {
 
     mouseStep: function() {
         if (this.mouseDown) {
+            if (!alwaysVoice) {
+                UI.handleTouches();
+            }
             const rect = spaceCanvas.getBoundingClientRect();
             const x = (this.mouse_pageX-window.scrollX-rect.left)/rect.width*spaceCanvas.width;
             const y = (this.mouse_pageY-window.scrollY-rect.top)/rect.height*spaceCanvas.height;
@@ -939,6 +943,9 @@ var Analysis = {
         this.mouse_pageX = undefined;
         this.mouse_pageY = undefined;
         this.mouseTet = undefined;
+        if (!alwaysVoice) {
+            UI.handleTouches();
+        }
     },
 
     analyze : function(outArrayIn, middlePeakOffsetIn)

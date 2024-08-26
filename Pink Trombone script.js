@@ -753,7 +753,7 @@ var Glottis =
             this.x = this.touch.x;
             this.y = local_y + this.keyboardTop+10;
         }
-        Glottis.isTouched = (this.touch != 0);
+        Glottis.isTouched = (this.touch != 0) || (TractUI.lipTouch != 0) || (TractUI.tongueTouch != 0) || Analysis.mouseDown;
     },
         
     runStep : function(lambda, noiseSource)
@@ -804,7 +804,8 @@ var Glottis =
         if (!this.isTouched && alwaysVoice) this.newTenseness += (3-this.UITenseness)*(1-this.intensity);
         
         if (this.isTouched || alwaysVoice) this.intensity += 0.13;
-        else this.intensity -= 0.05;
+        else if (this.isTouched && !alwaysVoice) this.intensity += 0.25;
+        else this.intensity -= 0.2;
         this.intensity = Math.clamp(this.intensity, 0, 1);
     },    
     
