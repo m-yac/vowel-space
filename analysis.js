@@ -1269,13 +1269,10 @@ var Analysis = {
             spaceCtx.globalAlpha = 1.0;
         }
 
-        // draw dashed lines
+        // begin to draw axes, etc.
         spaceCtx.lineWidth = 2;
-        spaceCtx.setLineDash([10,10]);
         spaceCtx.fillStyle = "#AAA";
         spaceCtx.strokeStyle = "#AAA";
-        spaceCtx.font = "32px Arial";
-        spaceCtx.globalCompositeOperation = "color-burn";
         const f1_tick = 100;
         const f2_tick = 500;
         const f3_tick = 100;
@@ -1284,6 +1281,26 @@ var Analysis = {
         const f3_factor = f3_tick * this.M / sampleRate;
         const f1_axis_start = 80;
         const f2_axis_start = (1 - toNormalizedFormant(f2_factor * (Math.ceil(minF2 / f2_factor) - 1), 2)) * spaceCanvas.height;
+        
+        // draw out of bounds
+        spaceCtx.globalAlpha = 0.2;
+        spaceCtx.beginPath()
+        const f1_f2_inter = fromNormalizedFormant(spaceCanvas.height / spaceCanvas.height, 1);
+        const f2_f1_inter = fromNormalizedFormant(1 - f2_axis_start / spaceCanvas.height, 2);
+        for (let i = 0.0; i <= 1.0; i += 0.1) {
+            const inter = i * f1_f2_inter + (1 - i) * f2_f1_inter;
+            const x = (1 - toNormalizedFormant(inter, 2)) * spaceCanvas.height;
+            const y = (    toNormalizedFormant(inter, 1)) * spaceCanvas.height;
+            spaceCtx.lineTo(f3_region_width + x, y);
+        }
+        spaceCtx.lineTo(f3_region_width + f2_axis_start, spaceCanvas.height);
+        spaceCtx.fill();
+        spaceCtx.globalAlpha = 1.0;
+
+        // draw dashed lines
+        spaceCtx.setLineDash([10,10]);
+        spaceCtx.font = "32px Arial";
+        spaceCtx.globalCompositeOperation = "color-burn";
         spaceCtx.textAlign = "center";
         spaceCtx.textBaseline = 'bottom';
         spaceCtx.save();

@@ -72,6 +72,10 @@ canvas {
   transform: translateY(-50%);
 }
 
+.clickTextInner h1 {
+  margin-bottom: 36px;
+}
+
 .clickTextInner ul {
   padding-left: 20px;
   padding-right: 5px;
