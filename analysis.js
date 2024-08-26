@@ -122,6 +122,11 @@ function transformCurve(index, bits, lookupTable) {
 
 // ----------------------------------------------------------------
 
+var rawFormantData;
+var boundaryComponents;
+var minF1; var minF2; var minF3; var minF4;
+var maxF1; var maxF2; var maxF3; var maxF4;
+
 var oppOrchid = '#968ffa'; // OKLAB = 96.45% 0.02 284.69
 var oppPalePink = '#e9e9ff';
 
@@ -313,24 +318,29 @@ function fromLipTongueValues(lipDiameter, tongueDiameter, tongueIndex) {
     return fromNormLipTongueValues(normLipDiam, normTongueDiam, normTongueIndex);
 }
 
-const f1f2Padding = 0.25;
-const f3Padding = 0.1;
-const nMinF1 = Math.log2(minF1) - f1f2Padding;
-const nMinF2 = Math.log2(minF2) - f1f2Padding;
-const nMinF3 = Math.log2(minF3) - f3Padding;
-const nRngF1 = Math.log2(maxF1) + f1f2Padding - nMinF1;
-const nRngF2 = Math.log2(maxF2) + f1f2Padding - nMinF2;
-const nRngF3 = Math.log2(maxF3) + f3Padding - nMinF3;
+function normFormant(f, i) {
+    return i != 2 ? f : Math.log2(f);
+}
+function invNormFormant(f, i) {
+    return i != 2 ? f : Math.pow(2, f);
+}
+
+const nPadLo = [0.14, 0.10, 0.10];
+const nPadHi = [0.05, 0.06, 0.15];
+const nMin = [normFormant(minF1, 1),
+              normFormant(minF2, 2),
+              normFormant(minF3, 3)];
+const nRng = [normFormant(maxF1, 1) - nMin[1-1],
+              normFormant(maxF2, 2) - nMin[2-1],
+              normFormant(maxF3, 3) - nMin[3-1]];
+const nSlp = Array.from([0,1,2], (i) => (1 - nPadHi[i] - nPadLo[i]) / nRng[i]);
+const nInt = Array.from([0,1,2], (i) => nPadLo[i] - nSlp[i] * nMin[i]);
 
 function toNormalizedFormant(fi, i) {
-    const nMinFi = i == 1 ? nMinF1 : (i == 2 ? nMinF2 : nMinF3);
-    const nRngFi = i == 1 ? nRngF1 : (i == 2 ? nRngF2 : nRngF3);
-    return (Math.log2(fi) - nMinFi) / nRngFi;
+    return nSlp[i-1] * normFormant(fi, i) + nInt[i-1];
 }
 function fromNormalizedFormant(nFi, i) {
-    const nMinFi = i == 1 ? nMinF1 : (i == 2 ? nMinF2 : nMinF3);
-    const nRngFi = i == 1 ? nRngF1 : (i == 2 ? nRngF2 : nRngF3);
-    return Math.pow(2, nFi * nRngFi + nMinFi);
+    return invNormFormant((nFi - nInt[i-1]) / nSlp[i-1], i);
 }
 
 function toNormalizedFormantVec(f) {
@@ -842,6 +852,10 @@ FormantDataCollection.prototype.find_boundary = function find_boundary() {
 
 var formantDataCollection = new FormantDataCollection();
 
+const f3_region_width = 320;
+const f3_region_start = 0;
+const f3_region_end = f3_region_width - 170;
+
 var Analysis = {
     M: 4096,
 
@@ -882,11 +896,11 @@ var Analysis = {
     mouseStep: function() {
         if (this.mouseDown) {
             const rect = spaceCanvas.getBoundingClientRect();
-            const x = (this.mouse_pageX-window.scrollX-rect.left)/rect.width*spaceCanvas.width/spaceCanvas.height;
-            const y = (this.mouse_pageY-window.scrollY-rect.top)/rect.height*spaceCanvas.height/spaceCanvas.height;
-            const f1 = x >  1 ? this.orig_f1 : fromNormalizedFormant(    y, 1);
-            const f2 = x >  1 ? this.orig_f2 : fromNormalizedFormant(1 - x, 2);
-            const f3 = x <= 1 ? this.orig_f3 : fromNormalizedFormant(1 - y, 3);
+            const x = (this.mouse_pageX-window.scrollX-rect.left)/rect.width*spaceCanvas.width;
+            const y = (this.mouse_pageY-window.scrollY-rect.top)/rect.height*spaceCanvas.height;
+            const f1 = x <= f3_region_width ? this.orig_f1 : fromNormalizedFormant(     y                   /spaceCanvas.height, 1);
+            const f2 = x <= f3_region_width ? this.orig_f2 : fromNormalizedFormant(1 - (x - f3_region_width)/spaceCanvas.height, 2);
+            const f3 = x >  f3_region_width ? this.orig_f3 : fromNormalizedFormant(1 -  y                   /spaceCanvas.height, 3);
             if (!this.mouseTet) {
                 const index = fromLipTongueValues(TractUI.lipDiameter, TractUI.tongueDiameter, TractUI.tongueIndex);
                 this.mouseTet = FormantTet.withVertexNearestTo([f1, f2, f3], index);
@@ -1035,23 +1049,14 @@ var Analysis = {
         }
 
         for (let i = 0; i < 4; i += 1) {
-            let f = sincFFTPeaks[i];// * sampleRate / this.M;
-            const str = `F${i+1} = ${f.toFixed(5)}`;
+            let f = sincFFTPeaks[i] * sampleRate / this.M;
+            const str = `F${i+1} = ${f.toFixed(3)} Hz`;
             if (str != document.getElementById(`f${i+1}Div`).innerHTML) {
                 document.getElementById(`f${i+1}Div`).innerHTML = str;
             }
         }
 
-        spaceCtx.fillStyle = 'white';
-        spaceCtx.fillRect(0, 0, spaceCanvas.width, spaceCanvas.height);
-        
-        spaceCtx.beginPath()
-        spaceCtx.moveTo(spaceCanvas.height, spaceCanvas.height)
-        const xboundary = (1 - toNormalizedFormant(this.maxF1, 2)) * spaceCanvas.height;
-        const yboundary = (    toNormalizedFormant(this.minF2, 1)) * spaceCanvas.height;
-        spaceCtx.lineTo(spaceCanvas.height, yboundary);
-        spaceCtx.lineTo(xboundary, spaceCanvas.height);
-        spaceCtx.fill();
+        spaceCtx.clearRect(0, 0, spaceCanvas.width, spaceCanvas.height);
 
         spaceCtx.lineWidth = 45*2.5;
         spaceCtx.fillStyle = oppPalePink;
@@ -1063,7 +1068,7 @@ var Analysis = {
             const j = boundaryComponents[1][0][i % boundaryComponents[1][0].length];
             const x = (1 - toNormalizedFormant(rawFormantData[j + 1], 2)) * spaceCanvas.height;
             const y = (    toNormalizedFormant(rawFormantData[j + 0], 1)) * spaceCanvas.height;
-            spaceCtx.lineTo(x, y)
+            spaceCtx.lineTo(f3_region_width + x, y)
         }
         spaceCtx.stroke()
         spaceCtx.fill()
@@ -1088,48 +1093,12 @@ var Analysis = {
                 const minBound = minIntersections.length > 0 ? toNormalizedFormant(minIntersections[0][0],3) : minPoint[2];
                 const maxBound = maxIntersections.length > 0 ? toNormalizedFormant(maxIntersections[0][0],3) : maxPoint[2];
                 spaceCtx.beginPath()
-                let x = spaceCanvas.height + (spaceCanvas.width - spaceCanvas.height) / 2;
+                let x = (f3_region_start + f3_region_end) / 2;
                 let y = (1 - minBound) * spaceCanvas.height;
                 spaceCtx.lineTo(x, y)
                 y = (1 - maxBound) * spaceCanvas.height;
                 spaceCtx.lineTo(x, y)
                 spaceCtx.stroke()
-            }
-        }
-
-        spaceCtx.fillStyle = "#474747";
-        spaceCtx.strokeStyle = "#888";
-        spaceCtx.font = "64px Arial";
-        spaceCtx.textAlign = "center";
-        spaceCtx.textBaseline = 'middle';
-        spaceCtx.lineWidth = 3;
-        const ipa = [["i", 20.40679, 246.43989, [1,2]], ["y", 19.48702, 143.94133, [3]],
-                     ["e", 29.69484, 219.30206, [3,4]], ["ø", 28.80569, 136.17344, [5]],
-                     ["ɛ", 43.57679, 178.94762, [5,6]], ["œ", 42.99057, 127.14479, []],
-                     ["æ", 61.46892, 147.33359, [14]], ["ɐ", 55.63831, 111.10644, []],
-
-                     ["u", 20.87941, 49.04325, [9,10]], ["ɯ", 19.80656, 80.49524, [11]],
-                     ["o", 34.46724, 56.19418, [11,12]], ["ɤ", 30.84479, 84.68748, [13]],
-                     ["ɔ", 50.71282, 68.00439, [13,15]], ["ʌ", 46.66737, 87.79680, []],
-                     ["a", 69.68066, 114.46869, []], ["ɒ", 65.79103, 90.84197, []],
-
-                     ["ɪ", 23.79042, 197.84505, []],
-                     ["ɵ", 23.80616, 108.96843, []],
-                     ["ʊ", 24.78176, 64.58389, []],
-                     ["ə", 36.67890, 106.06422, []]];
-                                                     
-        for (const [str, f1, f2, lines] of ipa) {
-            const x = (1 - toNormalizedFormant(f2, 2)) * spaceCanvas.height;
-            const y = (    toNormalizedFormant(f1, 1)) * spaceCanvas.height;
-            spaceCtx.fillText(str, x, y);
-            for (const i of lines) {
-                spaceCtx.beginPath();
-                const xi = (1 - toNormalizedFormant(ipa[i][2], 2)) * spaceCanvas.height;
-                const yi = (    toNormalizedFormant(ipa[i][1], 1)) * spaceCanvas.height;
-                const r = 0.2;
-                spaceCtx.lineTo(     r  * x + (1 - r) * xi,      r  * y + (1 - r) * yi);
-                spaceCtx.lineTo((1 - r) * x +      r  * xi, (1 - r) * y +      r  * yi);
-                spaceCtx.stroke();
             }
         }
 
@@ -1143,7 +1112,7 @@ var Analysis = {
             spaceCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
             spaceCtx.strokeStyle = `rgb(${r}, ${g}, ${b})`;
             spaceCtx.globalAlpha = alpha;
-            const [iLipDiam, iTongueY, iTongueX] = fromLipTongueValues(TractUI.lipDiameter, TractUI.  tongueDiameter, TractUI.tongueIndex);
+            const [iLipDiam, iTongueY, iTongueX] = fromLipTongueValues(TractUI.lipDiameter, TractUI.tongueDiameter, TractUI.tongueIndex);
             const iLipDiam0 = Math.floor(iLipDiam);
             const iLipDiam1 = Math.ceil(iLipDiam);
             const t = iLipDiam % 1;
@@ -1153,53 +1122,155 @@ var Analysis = {
                     for (let k = 0; k < 5; k++) {
                         const iTongueX_k = iTongueX + (((k % 4) >> 1) ^ ((k % 4) &  1));
                         const iTongueY_k = iTongueY + ((k % 4) >> 1);
-                        const x = (1 - toNormalizedFormant(formantData(iLipDiam0, iTongueX_k, iTongueY_k, 1) * (1 - t) +
-                                                           formantData(iLipDiam1, iTongueX_k, iTongueY_k, 1) * t        , 2)) * spaceCanvas.height;
-                        const y = (    toNormalizedFormant(formantData(iLipDiam0, iTongueX_k, iTongueY_k, 0) * (1 - t) +
-                                                           formantData(iLipDiam1, iTongueX_k, iTongueY_k, 0) * t        , 1)) * spaceCanvas.height;
-                        spaceCtx.lineTo(x, y, 10, 0, 2*Math.PI);
+                        const f1 = formantData(iLipDiam0, iTongueX_k, iTongueY_k, 0) * (1 - t) +
+                                   formantData(iLipDiam1, iTongueX_k, iTongueY_k, 0) * t;
+                        const f2 = formantData(iLipDiam0, iTongueX_k, iTongueY_k, 1) * (1 - t) +
+                                   formantData(iLipDiam1, iTongueX_k, iTongueY_k, 1) * t;
+                        const x = (1 - toNormalizedFormant(f2, 2)) * spaceCanvas.height;
+                        const y = (    toNormalizedFormant(f1, 1)) * spaceCanvas.height;
+                        spaceCtx.lineTo(f3_region_width + x, y, 10, 0, 2*Math.PI);
                     }
                     spaceCtx.fill();
                     spaceCtx.stroke();
                 }
             }
-            /*
-            spaceCtx.lineCap = "round";
-            spaceCtx.lineWidth = 10;
-            spaceCtx.beginPath();
-            const iTongueX0 = Math.floor(iTongueX);
-            const iTongueY0 = Math.floor(iTongueY);
-            const iTongueX1 = Math.ceil(iTongueX);
-            const iTongueY1 = Math.ceil(iTongueY);
-            const tX = iTongueX % 1;
-            const tY = iTongueY % 1;
-            for (let iLipDiam = 0; iLipDiam <= 0xF; iLipDiam++) {
-                const j00 = toFormantDataIndex(iLipDiam, iTongueX0, iTongueY0, 0);
-                const j01 = toFormantDataIndex(iLipDiam, iTongueX0, iTongueY1, 0);
-                const j10 = toFormantDataIndex(iLipDiam, iTongueX1, iTongueY0, 0);
-                const j11 = toFormantDataIndex(iLipDiam, iTongueX1, iTongueY1, 0);
-                const x = (1 - this.mF2 * Math.log2(formantData[j00 + 1] * (1 - tX) * (1 - tY) + formantData[j01 + 1] * (1 - tX) * tY + formantData[j10 + 1] * tX * (1 - tY) + formantData[j11 + 1] * tX * tY)    + this.bF2) * spaceCanvas.height;
-                const y = (    this.mF1 * Math.log2(formantData[j00 + 0] * (1 - tX) * (1 - tY) + formantData[j01 + 0] * (1 - tX) * tY + formantData[j10 + 0] * tX * (1 - tY) + formantData[j11 + 0] * tX * tY)    - this.bF1) * spaceCanvas.height;
-                if (iLipDiam == 0) {
-                    spaceCtx.moveTo(x, y);
-                }
-                else {
-                    spaceCtx.lineTo(x, y);
-                }
-            }
-            spaceCtx.stroke();
-            */
+            spaceCtx.beginPath()
+            let x = (f3_region_start + f3_region_end) / 2;
+            let y = (1 - toNormalizedFormant(sincFFTPeaks[2], 3)) * spaceCanvas.height;
+            spaceCtx.arc(x, y, 45/2*2.5, 0, 2*Math.PI);
+            spaceCtx.fill();
             spaceCtx.globalAlpha = 1.0;
         }
 
-        // if (sincFFTPeaks.length >= 2) {
-        //     spaceCtx.beginPath();
-        //     const x = spaceCanvas.height + (spaceCanvas.width - spaceCanvas.height) / 2;
-        //     // for (let i = 0; i < )
-        //     const y = (this.mF3 * Math.log2(sincFFTPeaks[2]) - this.bF3) * spaceCanvas.height;
-        //     spaceCtx.lineTo(x, y);
-        //     spaceCtx.fill();
-        // }
+        // draw dashed lines
+        spaceCtx.lineWidth = 2;
+        spaceCtx.setLineDash([10,10]);
+        spaceCtx.fillStyle = "#888";
+        spaceCtx.strokeStyle = "#888";
+        spaceCtx.font = "32px Arial";
+        spaceCtx.globalCompositeOperation = "color-burn";
+        const f1_tick = 100;
+        const f2_tick = 500;
+        const f3_tick = 100;
+        const f1_factor = f1_tick * this.M / sampleRate;
+        const f2_factor = f2_tick * this.M / sampleRate;
+        const f3_factor = f3_tick * this.M / sampleRate;
+        const f1_axis_start = 80;
+        const f2_axis_start = (1 - toNormalizedFormant(f2_factor * (Math.ceil(minF2 / f2_factor) - 1), 2)) * spaceCanvas.height;
+        spaceCtx.textAlign = "center";
+        spaceCtx.textBaseline = 'bottom';
+        spaceCtx.save();
+        spaceCtx.translate(f3_region_width + f2_axis_start + 80, (f1_axis_start + spaceCanvas.height) / 2);
+        spaceCtx.rotate(Math.PI/2);
+        spaceCtx.fillText("F1 (Hz)", 0, 0);
+        spaceCtx.restore();
+        spaceCtx.save();
+        spaceCtx.translate(f3_region_end + 100, (f1_axis_start + spaceCanvas.height) / 2);
+        spaceCtx.rotate(Math.PI/2);
+        spaceCtx.fillText("F3 (Hz)", 0, 0);
+        spaceCtx.restore();
+        spaceCtx.textAlign = "left";
+        spaceCtx.textBaseline = 'middle';
+        for (let f1 = Math.floor(minF1 / f1_factor); f1 < Math.ceil(maxF1 / f1_factor) + 1; f1++) {
+            const y = toNormalizedFormant(f1_factor * f1, 1) * spaceCanvas.height;
+            if (y > f1_axis_start) {
+                spaceCtx.beginPath();
+                spaceCtx.lineTo(f3_region_width, y);
+                spaceCtx.lineTo(f3_region_width + f2_axis_start, y);
+                spaceCtx.stroke();
+            }
+            if (y >= f1_axis_start) {
+                spaceCtx.fillText(`${f1_tick * f1}`, f3_region_width + f2_axis_start + 8, y + 2);
+            }
+        }
+        for (let f3 = Math.ceil(minF3 / f3_factor) - 1; f3 < Math.ceil(maxF3 / f3_factor) + 1; f3++) {
+            const y = (1 - toNormalizedFormant(f3_factor * f3, 3)) * spaceCanvas.height;
+            if (y > f1_axis_start) {
+                spaceCtx.beginPath();
+                spaceCtx.lineTo(f3_region_start, y);
+                spaceCtx.lineTo(f3_region_end, y);
+                spaceCtx.stroke();
+            }
+            if (y >= f1_axis_start) {
+                spaceCtx.fillText(`${f3_tick * f3}`, f3_region_end + 8, y + 2);
+            }
+        }
+        spaceCtx.textAlign = "center";
+        spaceCtx.textBaseline = 'top';
+        spaceCtx.fillText("F2 (Hz)", f3_region_width + f2_axis_start / 2, 0);
+        spaceCtx.textBaseline = 'bottom';
+        for (let f2 = Math.ceil(minF2 / f2_factor) - 1; f2 < Math.ceil(maxF2 / f2_factor) + 1; f2++) {
+            const x = (1 - toNormalizedFormant(f2_factor * f2, 2)) * spaceCanvas.height;
+            if (x < f2_axis_start) {
+                spaceCtx.beginPath();
+                spaceCtx.lineTo(f3_region_width + x, f1_axis_start);
+                spaceCtx.lineTo(f3_region_width + x, spaceCanvas.height);
+                spaceCtx.stroke();
+            }
+            if (x <= f2_axis_start) {
+                spaceCtx.fillText(`${f2_tick * f2}`, f3_region_width + x, f1_axis_start - 8);
+            }
+        }
+        // draw boundary arrows
+        spaceCtx.setLineDash([]);
+        spaceCtx.lineWidth = 4;
+        spaceCtx.beginPath();
+        spaceCtx.lineTo(f3_region_width + 10, f1_axis_start-10);
+        spaceCtx.lineTo(f3_region_width + 0, f1_axis_start);
+        spaceCtx.lineTo(f3_region_width + 10, f1_axis_start+10);
+        spaceCtx.lineTo(f3_region_width + 0, f1_axis_start);
+        spaceCtx.lineTo(f3_region_width + f2_axis_start, f1_axis_start);
+        spaceCtx.lineTo(f3_region_width + f2_axis_start, spaceCanvas.height - 2);
+        spaceCtx.lineTo(f3_region_width + f2_axis_start - 10, spaceCanvas.height - 2 - 10);
+        spaceCtx.lineTo(f3_region_width + f2_axis_start, spaceCanvas.height - 2);
+        spaceCtx.lineTo(f3_region_width + f2_axis_start + 10, spaceCanvas.height - 2 - 10);
+        spaceCtx.stroke();
+        spaceCtx.beginPath();
+        spaceCtx.lineTo(f3_region_end, spaceCanvas.height);
+        spaceCtx.lineTo(f3_region_end, f1_axis_start - 2);
+        spaceCtx.lineTo(f3_region_end - 10, f1_axis_start - 2 + 10);
+        spaceCtx.lineTo(f3_region_end, f1_axis_start - 2);
+        spaceCtx.lineTo(f3_region_end + 10, f1_axis_start - 2 + 10);
+        spaceCtx.stroke();
+
+        spaceCtx.globalCompositeOperation = "source-over";
+
+        // draw IPA symbols
+        spaceCtx.fillStyle = "#474747";
+        spaceCtx.strokeStyle = "#888";
+        spaceCtx.font = "64px Arial";
+        spaceCtx.textAlign = "center";
+        spaceCtx.textBaseline = 'middle';
+        spaceCtx.lineWidth = 3;
+        const ipa = [["i", 293.189, 2752.617, [1,2]], ["y", 290.559, 1939.181, [3]],
+                     ["e", 471.685, 2217.909, [3,4]], ["ø", 458.650, 1684.690 , [5]],
+                     ["ɛ", 627.898, 1899.734, [5,6]], ["œ", 617.047, 1474.398, []],
+                     ["æ", 755.531, 1574.874, [14]], ["ɐ", 55.63831, 111.10644, []],
+
+                     ["u", 280.814, 587.882, [9,10]], ["ɯ", 289.417, 836.786, [11]],
+                     ["o", 427.646, 674.643, [11,12]], ["ɤ", 439.720, 942.954, [13]],
+                     ["ɔ", 572.700, 770.287, [13,15]], ["ʌ", 600.275, 1029.261, []],
+                     ["a", 811.613, 1228.786, []], ["ɒ", 722.026, 949.818, []],
+
+                     ["ɪ", 383.169, 2116.273, []],
+                     ["ɵ", 361.728, 1286.303 , []],
+                     ["ʊ", 377.588, 751.881, []],
+                     ["ə", 552.198, 1242.380, []],
+                     ["ɐ", 705.832, 1232.888, []]];
+        for (const [str, f1, f2, lines] of ipa) {
+            const x = (1 - toNormalizedFormant(f2 * this.M / sampleRate, 2)) * spaceCanvas.height;
+            const y = (    toNormalizedFormant(f1 * this.M / sampleRate, 1)) * spaceCanvas.height;
+            spaceCtx.fillText(str, f3_region_width + x, y);
+            for (const i of lines) {
+                spaceCtx.beginPath();
+                const xi = (1 - toNormalizedFormant(ipa[i][2] * this.M / sampleRate, 2)) * spaceCanvas.height;
+                const yi = (    toNormalizedFormant(ipa[i][1] * this.M / sampleRate, 1)) * spaceCanvas.height;
+                const r = 0.2;
+                spaceCtx.lineTo(f3_region_width +      r  * x + (1 - r) * xi,      r  * y + (1 - r) * yi);
+                spaceCtx.lineTo(f3_region_width + (1 - r) * x +      r  * xi, (1 - r) * y +      r  * yi);
+                spaceCtx.stroke();
+            }
+        }
         
         if (sincFFTPeaks.length >= 3) {
             spaceCtx.fillStyle = oppOrchid;
@@ -1211,87 +1282,23 @@ var Analysis = {
 
             spaceCtx.globalAlpha = 0.7;
             spaceCtx.beginPath();
-            spaceCtx.arc(x,y, 18*2.5, 0, 2*Math.PI);
+            spaceCtx.arc(f3_region_width + x, y, 18*2.5, 0, 2*Math.PI);
             spaceCtx.stroke();        
             spaceCtx.globalAlpha = 0.15;
             spaceCtx.fill();
             spaceCtx.globalAlpha = 1.0;
 
-            x = spaceCanvas.height + (spaceCanvas.width - spaceCanvas.height) / 2;
+            x = (f3_region_start + f3_region_end) / 2;
             y = (1 - toNormalizedFormant(sincFFTPeaks[2], 3)) * spaceCanvas.height;
 
             spaceCtx.globalAlpha = 0.7;
             spaceCtx.beginPath();
-            spaceCtx.arc(x,y, 18*2.5, 0, 2*Math.PI);
+            spaceCtx.arc(x, y, 18*2.5, 0, 2*Math.PI);
             spaceCtx.stroke();        
             spaceCtx.globalAlpha = 0.15;
             spaceCtx.fill();
             spaceCtx.globalAlpha = 1.0;
-            /*
-            const [iLipDiam, iTongueY, iTongueX] = fromFormants(sincFFTPeaks[0], sincFFTPeaks[1], sincFFTPeaks[2]);
-            const iLipDiam0 = Math.floor(iLipDiam);
-            const iTongueY0 = Math.floor(iTongueY);
-            const iTongueX0 = Math.floor(iTongueX);
-            const iLipDiam1 = Math.ceil(iLipDiam);
-            const iTongueY1 = Math.ceil(iTongueY);
-            const iTongueX1 = Math.ceil(iTongueX);
-            const tL = iLipDiam % 1;
-            const tY = iTongueY % 1;
-            const tX = iTongueX % 1;
-            const j000 = toFormantDataIndex(iLipDiam0, iTongueY0, iTongueX0, 0);
-            const j001 = toFormantDataIndex(iLipDiam0, iTongueY0, iTongueX1, 0);
-            const j010 = toFormantDataIndex(iLipDiam0, iTongueY1, iTongueX0, 0);
-            const j011 = toFormantDataIndex(iLipDiam0, iTongueY1, iTongueX1, 0);
-            const j100 = toFormantDataIndex(iLipDiam1, iTongueY0, iTongueX0, 0);
-            const j101 = toFormantDataIndex(iLipDiam1, iTongueY0, iTongueX1, 0);
-            const j110 = toFormantDataIndex(iLipDiam1, iTongueY1, iTongueX0, 0);
-            const j111 = toFormantDataIndex(iLipDiam1, iTongueY1, iTongueX1, 0);
-            const f0 = formantData[j000|0] * (1 - tL) * (1 - tY) * (1 - tX) +
-                       formantData[j001|0] * (1 - tL) * (1 - tY) *      tX  +
-                       formantData[j010|0] * (1 - tL) *      tY  * (1 - tX) +
-                       formantData[j011|0] * (1 - tL) *      tY  *      tX  +
-                       formantData[j100|0] *      tL  * (1 - tY) * (1 - tX) +
-                       formantData[j101|0] *      tL  * (1 - tY) *      tX  +
-                       formantData[j110|0] *      tL  *      tY  * (1 - tX) +
-                       formantData[j111|0] *      tL  *      tY  *      tX;
-            const f1 = formantData[j000|1] * (1 - tL) * (1 - tY) * (1 - tX) +
-                       formantData[j001|1] * (1 - tL) * (1 - tY) *      tX  +
-                       formantData[j010|1] * (1 - tL) *      tY  * (1 - tX) +
-                       formantData[j011|1] * (1 - tL) *      tY  *      tX  +
-                       formantData[j100|1] *      tL  * (1 - tY) * (1 - tX) +
-                       formantData[j101|1] *      tL  * (1 - tY) *      tX  +
-                       formantData[j110|1] *      tL  *      tY  * (1 - tX) +
-                       formantData[j111|1] *      tL  *      tY  *      tX;
-            const tet = FormantTet.nearest(sincFFTPeaks[0], sincFFTPeaks[1], sincFFTPeaks[2]);
-            const is = tet.interp_coords(sincFFTPeaks[0], sincFFTPeaks[1], sincFFTPeaks[2]);
-            const [lipDiameter, tongueDiameter, tongueIndex] = toLipTongueValues(is[0], is[2], is[1]);
-            clickIndexDiameter(TractUI.lipIndex, lipDiameter);
-            clickIndexDiameter(tongueIndex, tongueDiameter);
-            /*
-            const coords = tet.barycentric_coords(sincFFTPeaks[0], sincFFTPeaks[1], sincFFTPeaks[2]);
-            spaceCtx.fillStyle = coords[0] >= 0 && coords[1] >= 0 && coords[2] >= 0 && coords[3] >= 0 ? 'green' : 'red';
-            for (let i = 0; i < 4; i++) {
-                spaceCtx.beginPath();
-                x = (1 - this.mF2 * Math.log2(formantData(tet.x[i][0], tet.x[i][1], tet.x[i][2], 1)) + this.bF2) * spaceCanvas.height;
-                y = (    this.mF1 * Math.log2(formantData(tet.x[i][0], tet.x[i][1], tet.x[i][2], 0)) - this.bF1) * spaceCanvas.height;
-                spaceCtx.arc(x, y, 10, 0, 2*Math.PI);
-                spaceCtx.fill();
-            }/*
-            spaceCtx.fillStyle = projected ? 'blue' : 'green';
-            spaceCtx.beginPath();
-            x = (1 - this.mF2 * Math.log2(f1) + this.bF2) * spaceCanvas.height;
-            y = (    this.mF1 * Math.log2(f0) - this.bF1) * spaceCanvas.height;
-            spaceCtx.arc(x, y, 10, 0, 2*Math.PI);
-            spaceCtx.fill();*/
         }
-
-        // for (let x = 0; x < 64; x++) {
-        //     for (let y = 0; y < 64; y++) {
-        //         spaceCtx.beginPath();
-        //         spaceCtx.arc(spaceCanvas.height * x / 64, spaceCanvas.height * y / 64, 5, 0, 2*Math.PI);
-        //         spaceCtx.fill();   
-        //     }
-        // }
 
         if (this.mouseDown) {
             this.mouseStep();
